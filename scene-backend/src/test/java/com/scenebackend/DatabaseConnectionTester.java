@@ -14,7 +14,7 @@ import java.util.Properties;
 public class DatabaseConnectionTester {
 
     // 数据库连接配置 - 从application.properties中复制
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/shop?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8";
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/scene?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8";
     private static final String DB_USERNAME = "root";
     private static final String DB_PASSWORD = "root";
     private static final String DB_DRIVER = "com.mysql.cj.jdbc.Driver";
