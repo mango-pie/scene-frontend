@@ -210,10 +210,10 @@ onMounted(() => {
     <Divider />
 
     <!-- 用户标签区域 -->
-    <div class="section" v-if="userInfo?.tags?.length > 0">
+    <div class="section" v-if="userInfo?.tagList?.length > 0">
       <h3 class="section-title">用户标签</h3>
       <div class="tags-container">
-        <Tag v-for="tag in userInfo.tags" :key="tag" type="default" style="margin: 8px 8px 0 0;">
+        <Tag v-for="tag in userInfo.tagList" :key="tag" type="default" style="margin: 8px 8px 0 0;">
           {{ tag }}
         </Tag>
       </div>

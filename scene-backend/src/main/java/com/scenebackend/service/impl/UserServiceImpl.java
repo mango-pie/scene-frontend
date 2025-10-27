@@ -64,6 +64,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         safetyUser.setUserRole(originUser.getUserRole());
         safetyUser.setPlanetCode(originUser.getPlanetCode());
         safetyUser.setTags(originUser.getTags());
+        safetyUser.setProfile(originUser.getProfile());
         return safetyUser;
     }
 
@@ -222,38 +223,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "标签列表不能为空");
         }
 
-        // SQL查询方式 - 记录时间
+        // 修改为使用JSON数组格式进行查询
         long sqlStartTime = System.currentTimeMillis();
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         for(String tagName : tagNameList) {
             System.out.println("tagName: " + tagName);
-            queryWrapper = queryWrapper.like("tags", tagName);
+            // 修改为搜索JSON数组格式的标签
+            queryWrapper = queryWrapper.like("tags", "\"" + tagName + "\"");
         }
         List<User> userList = userMapper.selectList(queryWrapper);
         long sqlEndTime = System.currentTimeMillis();
         System.out.println("SQL查询方式执行时间: " + (sqlEndTime - sqlStartTime) + "ms");
-
-        // GSON查询方式 - 记录时间
-//        long gsonStartTime = System.currentTimeMillis();
-////        queryWrapper = new QueryWrapper<>(); // 查询所有用户
-//        userList = userMapper.selectList(queryWrapper);
-//        Gson gson = new Gson();
-//
-//        List<User> filteredUserList = userList.stream().filter(user -> {
-//            String tagsStr = user.getTags();
-//            if (StringUtils.isBlank(tagsStr)) {
-//                return false;
-//            }
-//            Set<String> tagSet = gson.fromJson(tagsStr, new TypeToken<Set<String>>() {}.getType());
-//            for (String tagName : tagNameList) {
-//                if (!tagSet.contains(tagName)) {
-//                    return false;
-//                }
-//            }
-//            return true;
-//        }).map(this::getSafetyUser).collect(Collectors.toList());
-//        long gsonEndTime = System.currentTimeMillis();
-//        System.out.println("GSON查询方式执行时间: " + (gsonEndTime - gsonStartTime) + "ms");
 
         return userList.stream().map(this::getSafetyUser).collect(Collectors.toList());
     }

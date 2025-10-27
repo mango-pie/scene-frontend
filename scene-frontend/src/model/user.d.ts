@@ -12,4 +12,6 @@ export type User = {
     plantCode: string;
     tags: string[];
     createTime: Date;
+
+    profile?: string;
 }

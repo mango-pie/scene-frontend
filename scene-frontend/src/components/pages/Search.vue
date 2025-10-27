@@ -117,6 +117,9 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { showToast } from 'vant';
+import {useRouter} from "vue-router";
+
+const router = useRouter();
 
 const value = ref('');
 const activeIds = ref([]);
@@ -142,7 +145,13 @@ const originalTags = [
       { text: '徐州', id: '徐州'},
     ],
   },
-  { text: '福建', disabled: true },
+  { text: '代码',
+    children: [
+      { text: 'Java', id: 'Java' },
+      { text: 'Python', id: 'Python' },
+      { text: 'C++', id: 'C++'},
+    ],
+  },
 ];
 
 // 计算属性：根据搜索文本过滤标签
@@ -214,6 +223,18 @@ const close = (tagId) => {
 // 直接过滤掉要关闭的标签id
   activeIds.value = activeIds.value.filter(id => id !== tagId);
 }
+
+const handleSearch = () => {
+  if (activeIds.value.length === 0) {
+    showToast('请选择标签');
+    return;
+  }
+  // 构建查询参数
+  const queryParams = activeIds.value.join(',');
+  // 导航到搜索结果页面
+
+  router.push({ path: '/user/list', query: { tags: queryParams } });
+}
 </script>
 
 <template>
@@ -248,6 +269,8 @@ const close = (tagId) => {
       v-model:main-active-index="activeIndex"
       :items="filteredTags"
   />
+
+  <van-button type="primary" @click="handleSearch">搜索</van-button>
 </template>
 
 <style scoped>

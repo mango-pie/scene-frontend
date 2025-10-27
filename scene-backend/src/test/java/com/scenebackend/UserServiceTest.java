@@ -28,7 +28,7 @@ public class UserServiceTest {
     // 测试用例中使用的测试账号
     private static final String TEST_USER_ACCOUNT = "test" + UUID.randomUUID().toString().substring(0, 5);
     private static final String TEST_USER_PASSWORD = "12345678";
-    private static final String TEST_USER_TAG = "[\"测试标签\"]";
+    private static final List<String> TEST_USER_TAG = Arrays.asList("Python", "Java");
 
     // 测试搜索用户方法
     @Test
@@ -230,22 +230,22 @@ public class UserServiceTest {
         System.out.println("测试12: 测试根据标签搜索用户...");
 
          //创建一个带有标签的测试用户
-        User testUser = new User();
-        testUser.setUsername("TagTestUser");
-        testUser.setUserAccount("tagtest" + System.currentTimeMillis());
-        testUser.setUserPassword(TEST_USER_PASSWORD);
-        testUser.setTags(TEST_USER_TAG);
-        userService.save(testUser);
+//        User testUser = new User();
+//        testUser.setUsername("TagTestUser");
+//        testUser.setUserAccount("tagtest" + System.currentTimeMillis());
+//        testUser.setUserPassword(TEST_USER_PASSWORD);
+//        testUser.setTags(TEST_USER_TAG);
+//        userService.save(testUser);
 
         // 使用标签搜索
-        List<String> tags = Arrays.asList("测试标签");
+        List<String> tags = Arrays.asList("Python", "Java");
         List<User> users = userService.searchUsersByTags(tags);
 
         // 验证搜索结果
         assertNotNull(users, "搜索结果不应为null");
         boolean found = false;
         for (User user : users) {
-            if (user.getUsername().equals("TagTestUser")) {
+            if (user.getUsername().equals("scene")) {
                 found = true;
                 break;
             }
@@ -254,7 +254,7 @@ public class UserServiceTest {
         System.out.println("✅ 标签搜索测试通过");
 
         // 清理测试数据
-       userService.removeById(testUser.getId());
+//       userService.removeById(testUser.getId());
     }
 
     // 测试更新用户信息方法
