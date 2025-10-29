@@ -115,9 +115,10 @@
 
 
 <script setup>
-import { ref, computed } from 'vue';
+import {ref, computed, onMounted} from 'vue';
 import { showToast } from 'vant';
 import {useRouter} from "vue-router";
+import {searchTags} from "../../api/tag.js";
 
 const router = useRouter();
 
@@ -235,6 +236,17 @@ const handleSearch = () => {
 
   router.push({ path: '/user/list', query: { tags: queryParams } });
 }
+const searchByTags = async () => {
+  // try{
+    const tags = await searchTags();
+    console.log(tags);
+  // }catch (error) {
+  //   showToast('搜索标签失败');
+  // }
+}
+onMounted(() => {
+  searchByTags();
+});
 </script>
 
 <template>
