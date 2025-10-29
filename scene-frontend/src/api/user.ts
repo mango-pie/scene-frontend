@@ -5,6 +5,10 @@ interface User {
   id: number;
   username: string;
   userAccount: string;
+  email: string;
+  phone: string;
+  gender: number;
+  profile: string;
   // 其他用户属性...
 }
 
@@ -52,5 +56,6 @@ export const getCurrentUser = () => {
 
 // 更新用户信息
 export const updateUser = (user: Partial<User>) => {
+  console.log('更新用户信息:', user);
   return request.post('/user/update', user);
 };

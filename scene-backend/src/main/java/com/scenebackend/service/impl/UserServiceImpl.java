@@ -9,6 +9,7 @@ import com.google.gson.reflect.TypeToken;
 import com.scenebackend.common.ErrorCode;
 import com.scenebackend.exception.BusinessException;
 import com.scenebackend.model.domain.User;
+import com.scenebackend.model.dto.UserUpdateRequest;
 import com.scenebackend.service.UserService;
 import com.scenebackend.mapper.UserMapper;
 import org.springframework.stereotype.Service;
@@ -169,13 +170,37 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 //    }
 
     @Override
-    public int updateUser(User user) {
-        if (user == null) {
+    public int updateUser(UserUpdateRequest request) {
+        if (request == null || request.getId() == null) {
             return 0;
         }
-        // 可以添加各种校验逻辑
-        // 示例：不允许直接修改密码
-        user.setUserPassword(null);
+
+        User user = new User();
+        user.setId(request.getId());
+
+        // 只允许修改特定字段
+        if (StringUtils.isNotBlank(request.getUsername())) {
+            user.setUsername(request.getUsername());
+        }
+        if (StringUtils.isNotBlank(request.getAvatarUrl())) {
+            user.setAvatarUrl(request.getAvatarUrl());
+        }
+        if (request.getGender() != null) {
+            user.setGender(request.getGender());
+        }
+        if (StringUtils.isNotBlank(request.getPhone())) {
+            user.setPhone(request.getPhone());
+        }
+        if (StringUtils.isNotBlank(request.getEmail())) {
+            user.setEmail(request.getEmail());
+        }
+        if (StringUtils.isNotBlank(request.getPlantCode())) {
+            user.setPlanetCode(request.getPlantCode());
+        }
+        if (StringUtils.isNotBlank(request.getTags())) {
+            user.setTags(request.getTags());
+        }
+
         boolean updateResult = this.updateById(user);
         return updateResult ? 1 : 0;
     }

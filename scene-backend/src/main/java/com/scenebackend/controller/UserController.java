@@ -2,6 +2,7 @@ package com.scenebackend.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.scenebackend.model.domain.User;
+import com.scenebackend.model.dto.UserUpdateRequest;
 import com.scenebackend.service.UserService;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
@@ -77,7 +78,16 @@ public class UserController {
      * @return 更新结果
      */
     @PostMapping("/update")
-    public int updateUser(@RequestBody User user) {
+    public int updateUser(@RequestBody UserUpdateRequest user) {
+        System.out.println(user.getId());
+        System.out.println(user.getUsername());
+        System.out.println(user.getAvatarUrl());
+        System.out.println(user.getGender());
+        System.out.println(user.getPhone());
+        System.out.println(user.getEmail());
+        System.out.println(user.getPlantCode());
+        System.out.println(user.getTags());
+
         return userService.updateUser(user);
     }
 

@@ -3,6 +3,7 @@ package com.scenebackend.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.scenebackend.model.domain.User;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.scenebackend.model.dto.UserUpdateRequest;
 
 import java.util.List;
 
@@ -45,7 +46,7 @@ public interface UserService extends IService<User> {
     /**
      * 更新用户信息
      */
-    int updateUser(User user);
+    int updateUser(UserUpdateRequest request);
 
     /**
      * 获取用户列表（带分页）

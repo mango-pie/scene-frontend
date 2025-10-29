@@ -1,7 +1,20 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { Cell, CellGroup, Tag, Button, Divider, Image as VanImage, Popup, Field, RadioGroup, Radio } from 'vant';
-import userService from '../../services/userService';
+import {
+  Cell,
+  CellGroup,
+  Tag,
+  Button,
+  Divider,
+  Image as VanImage,
+  Popup,
+  Field,
+  RadioGroup,
+  Radio,
+  Toast
+} from 'vant';
+import { updateUser } from '../../api/user.js'
+import User from "./User.vue";
 
 // 用户信息数据
 const userInfo = ref(null);
@@ -47,7 +60,7 @@ const formattedCreateTime = computed(() => {
   return date.toLocaleString('zh-CN');
 });
 
-// 获取用户信息（模拟数据）
+//获取用户信息（模拟数据）
 const fetchUserInfo = () => {
   try {
     const user = JSON.parse(localStorage.getItem('currentUser'));
@@ -57,7 +70,7 @@ const fetchUserInfo = () => {
       account: user.userAccount || '',
       email: user.email || '',
       phone: user.phone || '',
-      gender: user.gender || 1,
+      gender: user.gender,
       username: user.username || '',
       plantCode: user.plantCode || '',
       oldPassword: '',
@@ -68,6 +81,9 @@ const fetchUserInfo = () => {
     console.error('获取用户信息失败:', error);
   }
 };
+//重构 fetchUserInfo：调用后端接口拿最新数据
+//仅初始化时调用，从 localStorage 读取初始用户信息
+
 
 // 打开修改弹窗时同步数据
 const openEditPopup = (popupName) => {
@@ -129,7 +145,7 @@ const closePopup = (popupName) => {
       break;
     case 'password':
       showChangePasswordPopup.value = false;
-      break;
+break;
     case 'avatar':
       showChangeAvatarPopup.value = false;
       break;
@@ -139,8 +155,62 @@ const closePopup = (popupName) => {
 // 模拟保存操作
 const handleSave = (popupName) => {
   // 仅做演示，不实际修改数据
+  switch(popupName) {
+    case 'account':
+      updateUser({username: formData.value.account, id: userInfo.value.id});
+      break;
+    case 'email':
+
+      break;
+    case 'phone':
+
+      break;
+    case 'gender':
+      updateUser({gender: formData.value.gender, id: userInfo.value.id});
+      break;
+    case 'profile':
+      // updateUser({username: formData.value.username, id: userInfo.value.id});
+      break;
+    case 'password':
+
+      break;
+    case 'avatar':
+
+      break;
+
+  }
   closePopup(popupName);
 };
+const updateUsers = async (user) => {
+  try {
+    // 确保性别数据类型正确
+    if (user.gender !== undefined) {
+      user.gender = Number(user.gender); // 确保转换为数字类型
+    }
+    const result = await updateUser(user);
+    if (result === 1) {
+      // 立即更新本地状态（确保响应式更新）
+      if (userInfo.value) {
+        // 创建新的对象引用，确保Vue检测到变化
+        userInfo.value = {
+          ...userInfo.value,
+          ...user
+        };
+      }
+      localStorage.setItem('currentUser', JSON.stringify(userInfo.value));
+      setTimeout(() => {
+        fetchUserInfo();
+      }, 100);
+    } else {
+      showToast('更新失败，请重试');
+      console.error('更新失败，返回结果:', result);
+    }
+  } catch (error) {
+    console.error('更新用户信息失败:', error);
+    showToast('更新用户信息失败');
+  }
+};
+
 
 // 头像点击事件
 const handleAvatarClick = () => {
@@ -187,7 +257,7 @@ onMounted(() => {
       <h3 class="section-title">基本信息</h3>
       <van-cell-group inset>
         <van-cell title="用户ID" :value="userInfo?.id || '-'" />
-        <van-cell title="账号" is-link :value="userInfo?.userAccount || '-'" @click="openEditPopup('account')" />
+        <van-cell title="账号" is-link :value="userInfo?.username || '-'" @click="openEditPopup('account')" />
         <van-cell title="邮箱" is-link :value="userInfo?.email || '-'" @click="openEditPopup('email')" />
         <van-cell title="手机号码" is-link :value="userInfo?.phone || '-'" @click="openEditPopup('phone')" />
         <van-cell title="性别" is-link :value="userGender" @click="openEditPopup('gender')" />
@@ -359,8 +429,8 @@ onMounted(() => {
         <h3 class="popup-title">选择性别</h3>
         <div class="form-container">
           <van-radio-group v-model="formData.gender" direction="horizontal">
-            <van-radio name="1">男</van-radio>
-            <van-radio name="0">女</van-radio>
+            <van-radio :name="1">男</van-radio>  <!-- 使用数字类型 -->
+            <van-radio :name="0">女</van-radio>  <!-- 使用数字类型 -->
           </van-radio-group>
         </div>
         <div class="popup-buttons">
@@ -658,7 +728,6 @@ onMounted(() => {
   border-radius: 50% !important;
   overflow: hidden !important;
 }
-
 :deep(.van-image__img) {
   width: 100% !important;
   height: 100% !important;
