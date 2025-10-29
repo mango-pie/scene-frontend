@@ -1,119 +1,3 @@
-<!--<script setup>-->
-<!--// 修改导入语句-->
-<!--import { ref } from 'vue';-->
-<!--import { showToast } from 'vant';-->
-
-<!--const value = ref('');-->
-<!--const onSearch = (val) => {-->
-<!--  const searchValue = value.value.trim().toLowerCase();-->
-<!--  -->
-<!--  // 如果搜索框为空，清空已选标签并提示-->
-<!--  if (!searchValue) {-->
-<!--    showToast('请输入搜索关键词');-->
-<!--    return;-->
-<!--  }-->
-<!--  -->
-<!--  // 将所有的子标签提取出来，过滤掉没有children属性的标签-->
-<!--  const searchResults = Tags-->
-<!--      .filter(parentTag => parentTag.children && Array.isArray(parentTag.children))-->
-<!--      .flatMap(parentTag => parentTag.children)-->
-<!--      .filter(tag => -->
-<!--        tag && -->
-<!--        tag.text && -->
-<!--        tag.text.toLowerCase().includes(searchValue)-->
-<!--      );-->
-<!--  -->
-<!--  // 保留现有标签，并添加新的搜索结果（避免重复）-->
-<!--  // 注意：这里我们只需要id，而不是整个标签对象-->
-<!--  const currentIds = activeIds.value.map(item => -->
-<!--    typeof item === 'object' ? item.id : item-->
-<!--  );-->
-<!--  -->
-<!--  const newTagIds = searchResults-->
-<!--    .filter(tag => !currentIds.includes(tag.id))-->
-<!--    .map(tag => tag.id); // 只取id值-->
-<!--  -->
-<!--  // 更新activeIds为id数组，而不是对象数组-->
-<!--  const updatedActiveIds = [...currentIds, ...newTagIds];-->
-<!--  activeIds.value = updatedActiveIds;-->
-<!--  -->
-<!--  // 显示搜索结果数量-->
-<!--  showToast(`找到 ${newTagIds.length} 个匹配项`);-->
-<!--}-->
-<!--const onCancel = () => showToast('取消');-->
-<!--const show = ref(true);-->
-<!--const close = (tag) => {-->
-<!--  // 如果tag是对象，比较id；如果是字符串，直接比较-->
-<!--  activeIds.value = activeIds.value.filter(item => {-->
-<!--    if (typeof tag === 'object' && typeof item === 'object') {-->
-<!--      return item.id !== tag.id;-->
-<!--    } else if (typeof tag === 'string' && typeof item === 'string') {-->
-<!--      return item !== tag;-->
-<!--    } else if (typeof tag === 'object' && typeof item === 'string') {-->
-<!--      return item !== tag.id;-->
-<!--    } else if (typeof tag === 'string' && typeof item === 'object') {-->
-<!--      return item.id !== tag;-->
-<!--    }-->
-<!--    return true;-->
-<!--  })-->
-<!--}-->
-
-<!--const activeIds = ref([]);-->
-<!--const activeIndex = ref(0);-->
-<!--const Tags = [-->
-<!--  {-->
-<!--    text: '浙江',-->
-<!--    children: [-->
-<!--      { text: '杭州', id: '杭州' },-->
-<!--      { text: '温州', id: '温州' },-->
-<!--      { text: '宁波', id: '宁波', disabled: true },-->
-<!--    ],-->
-<!--  },-->
-<!--  {-->
-<!--    text: '江苏',-->
-<!--    children: [-->
-<!--      { text: '南京', id: '南京' },-->
-<!--      { text: '无锡', id: '无锡' },-->
-<!--      { text: '徐州', id: '徐州'},-->
-<!--    ],-->
-<!--  },-->
-<!--  { text: '福建', disabled: true },-->
-<!--];-->
-<!--</script>-->
-
-<!--<template>-->
-<!--  <form action="/">-->
-<!--    <van-search-->
-<!--        v-model="value"-->
-<!--        show-action-->
-<!--        placeholder="请输入搜索关键词"-->
-<!--        @search="onSearch"-->
-<!--        @cancel="onCancel"-->
-<!--    />-->
-<!--  </form>-->
-<!--  <van-divider content-position="left">已选标签</van-divider>-->
-<!--  <div v-if="activeIds.length === 0">暂无标签</div>-->
-<!--  <van-row gutter="16" style="padding: 16px ">-->
-<!--    <van-col v-for="(tagId, index) in activeIds" :key="tagId">-->
-<!--    <van-tag closeable size="medium" type="primary" @close="close(tagId)">-->
-<!--      {{ tagId }}-->
-<!--    </van-tag>-->
-<!--    </van-col>-->
-<!--  </van-row>-->
-
-<!--  <van-divider content-position="left"/>-->
-<!--  <van-tree-select-->
-<!--      v-model:active-id="activeIds"-->
-<!--      v-model:main-active-index="activeIndex"-->
-<!--      :items="Tags"-->
-<!--  />-->
-<!--</template>-->
-
-<!--<style scoped>-->
-
-<!--</style>-->
-
-
 <script setup>
 import {ref, computed, onMounted} from 'vue';
 import { showToast } from 'vant';
@@ -128,8 +12,40 @@ const activeIndex = ref(0);
 const hasSearched = ref(false); // 标记是否已经进行过搜索
 const searchText = ref(''); // 存储当前搜索文本
 
-// 原始标签数据
-const originalTags = [
+// 后端返回的标签数据结构示例
+// {id: 1, isDelete: 0, isParent: 0, parentId: 3, tagName: "熊"}
+
+// 转换函数：将后端返回的扁平Tag列表转换为树形结构
+const convertTagsToTree = (tagList) => {
+  if (!Array.isArray(tagList)) {
+    return [];
+  }
+
+  // 创建父标签映射表
+  const parentTags = tagList.filter(tag => tag.isParent === 1);
+  const childTags = tagList.filter(tag => tag.isParent === 0);
+
+  // 构建树形结构
+  const tree = parentTags.map(parentTag => {
+    // 找到该父标签的所有子标签
+    const children = childTags
+      .filter(childTag => childTag.parentId === parentTag.id)
+      .map(childTag => ({
+        text: childTag.tagName,
+        id: childTag.tagName // 转换为字符串以匹配前端格式
+      }));
+
+    return {
+      text: parentTag.tagName,
+      children: children.length > 0 ? children : undefined
+    };
+  });
+
+  return tree;
+};
+
+// 原始标签数据（现在从后端获取）
+const originalTags = ref([
   {
     text: '浙江',
     children: [
@@ -153,19 +69,19 @@ const originalTags = [
       { text: 'C++', id: 'C++'},
     ],
   },
-];
+]);
 
 // 计算属性：根据搜索文本过滤标签
 const filteredTags = computed(() => {
 // 如果没有搜索过或搜索文本为空，显示所有标签
   if (!hasSearched.value || !searchText.value.trim()) {
-    return originalTags;
+    return originalTags.value;
   }
 
   const searchValue = searchText.value.trim().toLowerCase();
 
 // 对每个父标签进行过滤
-  return originalTags.map(parentTag => {
+  return originalTags.value.map(parentTag => {
 // 如果父标签没有children，保持原样
     if (!parentTag.children || !Array.isArray(parentTag.children)) {
 // 检查父标签文本是否包含搜索词
@@ -236,14 +152,28 @@ const handleSearch = () => {
 
   router.push({ path: '/user/list', query: { tags: queryParams } });
 }
+
 const searchByTags = async () => {
-  // try{
+  try {
     const tags = await searchTags();
-    console.log(tags);
-  // }catch (error) {
-  //   showToast('搜索标签失败');
-  // }
+    console.log('后端返回的标签数据:', tags);
+    
+    // 转换后端数据为前端需要的格式
+    if (tags && Array.isArray(tags)) {
+      const convertedTags = convertTagsToTree(tags);
+      console.log('转换后的标签数据:', convertedTags);
+      
+      // 更新原始标签数据
+      originalTags.value = convertedTags;
+    } else {
+      console.warn('后端返回的标签数据格式不正确');
+    }
+  } catch (error) {
+    console.error('搜索标签失败:', error);
+    showToast('搜索标签失败');
+  }
 }
+
 onMounted(() => {
   searchByTags();
 });
