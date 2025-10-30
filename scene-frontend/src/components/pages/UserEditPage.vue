@@ -27,6 +27,7 @@ const showEditGenderPopup = ref(false);
 const showEditProfilePopup = ref(false);
 const showChangePasswordPopup = ref(false);
 const showChangeAvatarPopup = ref(false);
+const showEditTagsPopup = ref(false);
 
 // 表单数据
 const formData = ref({
@@ -117,6 +118,9 @@ const openEditPopup = (popupName) => {
     case 'avatar':
       showChangeAvatarPopup.value = true;
       break;
+    case 'tags':
+      showEditTagsPopup.value = true;
+      break;
   }
 };
 
@@ -149,6 +153,9 @@ break;
     case 'avatar':
       showChangeAvatarPopup.value = false;
       break;
+    case 'tags':
+      showEditTagsPopup.value = false;
+      break;
   }
 };
 
@@ -157,16 +164,16 @@ const handleSave = (popupName) => {
   // 仅做演示，不实际修改数据
   switch(popupName) {
     case 'account':
-      updateUser({username: formData.value.account, id: userInfo.value.id});
+      updateUsers({username: formData.value.account, id: userInfo.value.id});
       break;
     case 'email':
-
+      updateUsers({email: formData.value.email, id: userInfo.value.id});
       break;
     case 'phone':
-
+      updateUsers({phone: formData.value.phone, id: userInfo.value.id});
       break;
     case 'gender':
-      updateUser({gender: formData.value.gender, id: userInfo.value.id});
+      updateUsers({gender: formData.value.gender, id: userInfo.value.id});
       break;
     case 'profile':
       // updateUser({username: formData.value.username, id: userInfo.value.id});
@@ -282,6 +289,7 @@ onMounted(() => {
     <!-- 用户标签区域 -->
     <div class="section" v-if="userInfo?.tagList?.length > 0">
       <h3 class="section-title">用户标签</h3>
+      <Button type="primary" size="small" @click="openEditPopup('tags')">编辑标签</Button>
       <div class="tags-container">
         <Tag v-for="tag in userInfo.tagList" :key="tag" type="default" style="margin: 8px 8px 0 0;">
           {{ tag }}
@@ -557,6 +565,68 @@ onMounted(() => {
         <div class="popup-buttons">
           <van-button round type="default" @click="closePopup('avatar')" style="margin-right: 10px;">取消</van-button>
           <van-button round type="primary" @click="handleSave('avatar')">确认更换</van-button>
+        </div>
+      </div>
+    </van-popup>
+
+
+    <van-popup
+        v-model:show="showEditTagsPopup"
+        position="bottom"
+        round
+        :overlay-style="{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }"
+        teleport="body"
+    >
+      <div class="popup-content">
+        <h3 class="popup-title">编辑用户标签</h3>
+        <div class="form-container">
+          <div class="tag-input-group">
+            <van-field
+                v-model="tagSearchInput"
+                placeholder="搜索现有标签"
+                clearable
+                @input="searchExistingTags"
+                @focus="tagSearchInput.trim() ? searchExistingTags() : null"
+            >
+              <template #button>
+                <van-button size="small" type="primary" @click="searchExistingTags">搜索</van-button>
+              </template>
+            </van-field>
+
+            <!-- 显示搜索结果 -->
+            <div v-if="showSearchResults" class="search-results">
+              <div class="search-results-title">可选标签：</div>
+              <van-tag
+                  v-for="tag in searchResults"
+                  :key="tag"
+                  type="default"
+                  @click="addSelectedTag(tag)"
+                  style="margin: 8px 8px 0 0; cursor: pointer;"
+              >
+                {{ tag }}
+              </van-tag>
+            </div>
+          </div>
+          <div class="selected-tags">
+            <div class="selected-tags-title">已选标签：</div>
+            <van-tag
+                v-for="(tag, index) in formData.tags"
+                :key="index"
+                type="primary"
+                closable
+                @close="removeTag(index)"
+                style="margin: 8px 8px 0 0;"
+            >
+              {{ tag }}
+            </van-tag>
+          </div>
+          <div class="tag-tips">
+            <p>提示：标签可以帮助其他用户更好地了解你</p>
+          </div>
+        </div>
+        <div class="popup-buttons">
+          <van-button round type="default" @click="closePopup('tags')" style="margin-right: 10px;">取消</van-button>
+          <van-button round type="primary" @click="handleSave('tags')">保存</van-button>
         </div>
       </div>
     </van-popup>
