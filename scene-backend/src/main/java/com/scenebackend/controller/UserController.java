@@ -8,6 +8,7 @@ import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
 
 //import javax.annotation.Resource;
+import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -79,16 +80,25 @@ public class UserController {
      */
     @PostMapping("/update")
     public int updateUser(@RequestBody UserUpdateRequest user) {
-        System.out.println(user.getId());
-        System.out.println(user.getUsername());
-        System.out.println(user.getAvatarUrl());
-        System.out.println(user.getGender());
-        System.out.println(user.getPhone());
-        System.out.println(user.getEmail());
-        System.out.println(user.getPlantCode());
-        System.out.println(user.getTags());
-
-        return userService.updateUser(user);
+        try {
+            System.out.println("接收到的用户更新请求:");
+            System.out.println("ID: " + user.getId());
+            System.out.println("用户名: " + user.getUsername());
+            System.out.println("头像URL: " + user.getAvatarUrl());
+            System.out.println("性别: " + user.getGender());
+            System.out.println("电话: " + user.getPhone());
+            System.out.println("邮箱: " + user.getEmail());
+            System.out.println("星球代码: " + user.getPlantCode());
+            System.out.println("标签列表:");
+            for (String tag : user.getTagList()) {
+                System.out.println("  - " + tag);
+            }
+            return userService.updateUser(user);
+        } catch (Exception e) {
+            System.err.println("更新用户信息时发生错误:");
+            e.printStackTrace();
+            return -1; // 返回错误代码
+        }
     }
 
     /**

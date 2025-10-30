@@ -3,7 +3,7 @@ import {ref, computed, onMounted} from 'vue';
 import { showToast } from 'vant';
 import {useRouter} from "vue-router";
 import {searchTags} from "../../api/tag.js";
-
+import {convertTagsToTree} from "../../utils/tag.js";
 const router = useRouter();
 
 const value = ref('');
@@ -16,59 +16,10 @@ const searchText = ref(''); // 存储当前搜索文本
 // {id: 1, isDelete: 0, isParent: 0, parentId: 3, tagName: "熊"}
 
 // 转换函数：将后端返回的扁平Tag列表转换为树形结构
-const convertTagsToTree = (tagList) => {
-  if (!Array.isArray(tagList)) {
-    return [];
-  }
 
-  // 创建父标签映射表
-  const parentTags = tagList.filter(tag => tag.isParent === 1);
-  const childTags = tagList.filter(tag => tag.isParent === 0);
-
-  // 构建树形结构
-  const tree = parentTags.map(parentTag => {
-    // 找到该父标签的所有子标签
-    const children = childTags
-      .filter(childTag => childTag.parentId === parentTag.id)
-      .map(childTag => ({
-        text: childTag.tagName,
-        id: childTag.tagName // 转换为字符串以匹配前端格式
-      }));
-
-    return {
-      text: parentTag.tagName,
-      children: children.length > 0 ? children : undefined
-    };
-  });
-
-  return tree;
-};
 
 // 原始标签数据（现在从后端获取）
 const originalTags = ref([
-  {
-    text: '浙江',
-    children: [
-      { text: '杭州', id: '杭州' },
-      { text: '温州', id: '温州' },
-      { text: '宁波', id: '宁波', disabled: true },
-    ],
-  },
-  {
-    text: '江苏',
-    children: [
-      { text: '南京', id: '南京' },
-      { text: '无锡', id: '无锡' },
-      { text: '徐州', id: '徐州'},
-    ],
-  },
-  { text: '代码',
-    children: [
-      { text: 'Java', id: 'Java' },
-      { text: 'Python', id: 'Python' },
-      { text: 'C++', id: 'C++'},
-    ],
-  },
 ]);
 
 // 计算属性：根据搜索文本过滤标签
@@ -107,6 +58,8 @@ const filteredTags = computed(() => {
     return null; // 没有匹配子标签的父标签返回null
   }).filter(tag => tag !== null); // 过滤掉返回null的标签
 });
+
+
 
 const onSearch = (val) => {
   const searchValue = value.value.trim().toLowerCase();

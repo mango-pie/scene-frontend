@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -164,8 +165,8 @@ public class User {
             sb.append("]");
             this.tags = sb.toString();
         }
+        this.setTags(this.tags);
     }
-
     /**
      * 获取原始的tags字符串（用于数据库操作）
      */

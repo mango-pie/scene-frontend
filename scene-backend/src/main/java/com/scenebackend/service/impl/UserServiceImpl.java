@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -142,69 +143,61 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         // 示例实现
         return 1; // 表示成功
     }
+@Override
+public int updateUser(UserUpdateRequest request) {
+    if (request == null || request.getId() == null) {
+        return 0;
+    }
+    User user = new User();
+    user.setId(request.getId());
 
-//    @Override
-//    public List<User> searchUsersByTags(List<String> tagList) {
-//        if (tagList == null || tagList.isEmpty()) {
-//            return new ArrayList<>();
-//        }
-//        // 查询所有用户
-//        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-//        List<User> userList = this.list(queryWrapper);
-//        // 筛选符合标签条件的用户
-//        return userList.stream()
-//                .filter(user -> {
-//                    String tags = user.getTags();
-//                    if (StringUtils.isBlank(tags)) {
-//                        return false;
-//                    }
-//                    for (String tag : tagList) {
-//                        if (!tags.contains(tag)) {
-//                            return false;
-//                        }
-//                    }
-//                    return true;
-//                })
-//                .map(this::getSafetyUser)
-//                .collect(Collectors.toList());
-//    }
+    boolean hasUpdateField = false;
 
-    @Override
-    public int updateUser(UserUpdateRequest request) {
-        if (request == null || request.getId() == null) {
-            return 0;
-        }
-
-        User user = new User();
-        user.setId(request.getId());
-
-        // 只允许修改特定字段
-        if (StringUtils.isNotBlank(request.getUsername())) {
-            user.setUsername(request.getUsername());
-        }
-        if (StringUtils.isNotBlank(request.getAvatarUrl())) {
-            user.setAvatarUrl(request.getAvatarUrl());
-        }
-        if (request.getGender() != null) {
-            user.setGender(request.getGender());
-        }
-        if (StringUtils.isNotBlank(request.getPhone())) {
-            user.setPhone(request.getPhone());
-        }
-        if (StringUtils.isNotBlank(request.getEmail())) {
-            user.setEmail(request.getEmail());
-        }
-        if (StringUtils.isNotBlank(request.getPlantCode())) {
-            user.setPlanetCode(request.getPlantCode());
-        }
-        if (StringUtils.isNotBlank(request.getTags())) {
-            user.setTags(request.getTags());
-        }
-
-        boolean updateResult = this.updateById(user);
-        return updateResult ? 1 : 0;
+    // 只允许修改特定字段
+    if (StringUtils.isNotBlank(request.getUsername())) {
+        user.setUsername(request.getUsername());
+        hasUpdateField = true;
+    }
+    if (StringUtils.isNotBlank(request.getAvatarUrl())) {
+        user.setAvatarUrl(request.getAvatarUrl());
+        hasUpdateField = true;
+    }
+    if (request.getGender() != null) {
+        user.setGender(request.getGender());
+        hasUpdateField = true;
+    }
+    if (StringUtils.isNotBlank(request.getPhone())) {
+        user.setPhone(request.getPhone());
+        hasUpdateField = true;
+    }
+    if (StringUtils.isNotBlank(request.getEmail())) {
+        user.setEmail(request.getEmail());
+        hasUpdateField = true;
+    }
+    if (StringUtils.isNotBlank(request.getPlantCode())) {
+        user.setPlanetCode(request.getPlantCode());
+        hasUpdateField = true;
+    }
+    if (request.getTagList() != null) {
+        System.out.println("标签列表: " + request.getTagList());
+        user.setTagList(request.getTagList());
+        hasUpdateField = true;
     }
 
+    // 如果没有需要更新的字段，直接返回0
+    if (!hasUpdateField) {
+        System.out.println("没有需要更新的字段，跳过数据库操作");
+        return 0;
+    }
+    try {
+        boolean updateResult = this.updateById(user);
+        return updateResult ? 1 : 0;
+    } catch (Exception e) {
+        System.err.println("执行数据库更新时发生错误:");
+        e.printStackTrace();
+        return -1;
+    }
+}
     @Override
     public Page<User> getUserList(int pageNum, int pageSize) {
         Page<User> page = new Page<>(pageNum, pageSize);

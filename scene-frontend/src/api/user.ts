@@ -9,6 +9,7 @@ interface User {
   phone: string;
   gender: number;
   profile: string;
+  tagList: string[];
   // 其他用户属性...
 }
 

@@ -1,23 +1,12 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import {
-  Cell,
-  CellGroup,
-  Tag,
-  Button,
-  Divider,
-  Image as VanImage,
-  Popup,
-  Field,
-  RadioGroup,
-  Radio,
-  Toast
-} from 'vant';
-import { updateUser } from '../../api/user.js'
-import User from "./User.vue";
-
+import {computed, onMounted, ref} from 'vue';
+import {Button, Cell, CellGroup, Divider, Image as VanImage, showToast, Tag} from 'vant';
+import {updateUser} from '../../api/user.js'
+import {searchTags} from '../../api/tag.js'
+import {convertTagsToTree} from '../../utils/tag.js'
 // 用户信息数据
 const userInfo = ref(null);
+
 // 控制弹出层显示状态
 const showPopup = ref(false);
 const showEditAccountPopup = ref(false);
@@ -39,9 +28,58 @@ const formData = ref({
   plantCode: '',
   oldPassword: '',
   newPassword: '',
-  confirmPassword: ''
+  confirmPassword: '',
+  tags: [] // 初始化标签数组
 });
 
+// 标签搜索相关变量
+const tagSearchInput = ref(''); // 标签搜索输入框
+const searchResults = ref([]); // 搜索结果
+const showSearchResults = ref(false); // 是否显示搜索结果
+const originalTags = ref([]); // 原始标签数据
+const hasSearched = ref(false); // 标记是否已经进行过搜索
+const searchText = ref(''); // 存储当前搜索文本
+
+const value = ref('');
+const activeIds = ref([]);
+const activeIndex = ref(0);
+
+// 计算属性：根据搜索文本过滤标签
+const filteredTags = computed(() => {
+  // 如果没有搜索过或搜索文本为空，显示所有标签
+  if (!hasSearched.value || !searchText.value.trim()) {
+    return originalTags.value;
+  }
+
+  const searchValue = searchText.value.trim().toLowerCase();
+
+  // 对每个父标签进行过滤
+  return originalTags.value.map(parentTag => {
+    // 如果父标签没有children，保持原样
+    if (!parentTag.children || !Array.isArray(parentTag.children)) {
+      // 检查父标签文本是否包含搜索词
+      if (parentTag.text && parentTag.text.toLowerCase().includes(searchValue)) {
+        return parentTag;
+      }
+      return null; // 不包含搜索词的父标签返回null，稍后会过滤掉
+    }
+
+    // 过滤子标签
+    const filteredChildren = parentTag.children.filter(child =>
+        child && child.text && child.text.toLowerCase().includes(searchValue)
+    );
+
+    // 如果父标签有匹配的子标签，返回包含这些子标签的父标签
+    if (filteredChildren.length > 0) {
+      return {
+        ...parentTag,
+        children: filteredChildren
+      };
+    }
+
+    return null; // 没有匹配子标签的父标签返回null
+  }).filter(tag => tag !== null); // 过滤掉返回null的标签
+});
 // 计算属性：格式化显示字段
 const userGender = computed(() => {
   return userInfo.value?.gender === 1 ? '男' : '女';
@@ -61,7 +99,7 @@ const formattedCreateTime = computed(() => {
   return date.toLocaleString('zh-CN');
 });
 
-//获取用户信息（模拟数据）
+// 获取用户信息
 const fetchUserInfo = () => {
   try {
     const user = JSON.parse(localStorage.getItem('currentUser'));
@@ -76,15 +114,14 @@ const fetchUserInfo = () => {
       plantCode: user.plantCode || '',
       oldPassword: '',
       newPassword: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      tags: user.tagList ? [...user.tagList] : [] // 正确初始化标签
     };
+    activeIds.value = formData.value.tags;
   } catch (error) {
     console.error('获取用户信息失败:', error);
   }
 };
-//重构 fetchUserInfo：调用后端接口拿最新数据
-//仅初始化时调用，从 localStorage 读取初始用户信息
-
 
 // 打开修改弹窗时同步数据
 const openEditPopup = (popupName) => {
@@ -95,6 +132,8 @@ const openEditPopup = (popupName) => {
     formData.value.gender = userInfo.value.gender || 1;
     formData.value.username = userInfo.value.username || '';
     formData.value.plantCode = userInfo.value.plantCode || '';
+    // 同步用户标签数据
+    formData.value.tags = userInfo.value.tagList ? [...userInfo.value.tagList] : [];
   }
   switch(popupName) {
     case 'account':
@@ -124,7 +163,7 @@ const openEditPopup = (popupName) => {
   }
 };
 
-// 关闭弹出层
+// 关闭弹出层 - 修复标签弹窗关闭逻辑
 const closePopup = (popupName) => {
   if (!popupName) {
     showPopup.value = false;
@@ -149,22 +188,21 @@ const closePopup = (popupName) => {
       break;
     case 'password':
       showChangePasswordPopup.value = false;
-break;
+      break;
     case 'avatar':
       showChangeAvatarPopup.value = false;
       break;
     case 'tags':
-      showEditTagsPopup.value = false;
+      showEditTagsPopup.value = false; // 修复关闭标签弹窗
       break;
   }
 };
 
-// 模拟保存操作
+// 保存操作 - 修复标签保存逻辑
 const handleSave = (popupName) => {
-  // 仅做演示，不实际修改数据
   switch(popupName) {
     case 'account':
-      updateUsers({username: formData.value.account, id: userInfo.value.id});
+      updateUsers({username: formData.value.username, id: userInfo.value.id});
       break;
     case 'email':
       updateUsers({email: formData.value.email, id: userInfo.value.id});
@@ -176,29 +214,51 @@ const handleSave = (popupName) => {
       updateUsers({gender: formData.value.gender, id: userInfo.value.id});
       break;
     case 'profile':
-      // updateUser({username: formData.value.username, id: userInfo.value.id});
+      updateUsers({
+        username: formData.value.username,
+        plantCode: formData.value.plantCode,
+        email: formData.value.email,
+        phone: formData.value.phone,
+        id: userInfo.value.id
+      });
       break;
     case 'password':
-
+      if (formData.value.newPassword === formData.value.confirmPassword) {
+        updateUsers({
+          oldPassword: formData.value.oldPassword,
+          newPassword: formData.value.newPassword,
+          id: userInfo.value.id
+        });
+      } else {
+        showToast('两次输入的新密码不一致');
+        return;
+      }
       break;
     case 'avatar':
-
+      // 头像上传功能待实现
       break;
-
+    case 'tags':
+      // 保存用户标签 - 添加用户ID
+      updateUsers({
+        tagList: activeIds.value,
+        id: userInfo.value.id
+      });
+      break;
   }
   closePopup(popupName);
 };
+
+// 更新用户信息
 const updateUsers = async (user) => {
   try {
     // 确保性别数据类型正确
     if (user.gender !== undefined) {
-      user.gender = Number(user.gender); // 确保转换为数字类型
+      user.gender = Number(user.gender);
     }
     const result = await updateUser(user);
     if (result === 1) {
-      // 立即更新本地状态（确保响应式更新）
+      // 立即更新本地状态
       if (userInfo.value) {
-        // 创建新的对象引用，确保Vue检测到变化
         userInfo.value = {
           ...userInfo.value,
           ...user
@@ -208,6 +268,7 @@ const updateUsers = async (user) => {
       setTimeout(() => {
         fetchUserInfo();
       }, 100);
+      showToast('更新成功');
     } else {
       showToast('更新失败，请重试');
       console.error('更新失败，返回结果:', result);
@@ -218,15 +279,118 @@ const updateUsers = async (user) => {
   }
 };
 
-
 // 头像点击事件
 const handleAvatarClick = () => {
   showPopup.value = true;
 };
 
+const searchExistingTags = async () => {
+  const searchValue = tagSearchInput.value.trim();
+
+  try {
+    // 总是获取所有标签数据
+    const tags = await searchTags();
+
+    // 转换为树形结构
+    const convertedTags = convertTagsToTree(tags);
+    originalTags.value = convertedTags;
+
+    // 存储搜索文本并标记已搜索
+    if (searchValue) {
+      searchText.value = searchValue;
+      hasSearched.value = true;
+      showToast(`找到 ${getMatchedTagsCount()} 个匹配项`);
+    } else {
+      hasSearched.value = false;
+    }
+
+    showSearchResults.value = true;
+  } catch (error) {
+    console.error('搜索标签失败:', error);
+    showToast('搜索标签失败');
+  }
+};
+
+// 计算匹配的标签数量
+const getMatchedTagsCount = () => {
+  return filteredTags.value
+      .filter(parent => parent.children && Array.isArray(parent.children))
+      .flatMap(parent => parent.children).length;
+};
+
+// 添加选中的标签
+const addSelectedTag = (tag) => {
+  if (!formData.value.tags.includes(tag)) {
+    formData.value.tags.push(tag);
+  }
+};
+
+// 移除标签
+const removeTag = (index) => {
+  formData.value.tags.splice(index, 1);
+};
+
+// 当选择标签时触发
+// const onSelectTag = (tagIds) => {
+//   activeIds.value = tagIds;
+//   // 清空已选标签，重新添加
+//   formData.value.tags = [];
+//   // 遍历所有标签，找到选中的标签名
+//   tagIds.forEach(tagId => {
+//     // 在原始标签数据中查找标签名
+//     findTagById(originalTags.value, tagId, (tagName) => {
+//       if (tagName && !formData.value.tags.includes(tagName)) {
+//         formData.value.tags.push(tagName);
+//       }
+//     });
+//   });
+// };
+const onSelectTag = (selectedIds) => {
+  // 清空现有标签，防止重复添加
+  formData.value.tags = [];
+  // 如果没有选中任何标签，直接返回
+  if (!selectedIds || selectedIds.length === 0) {
+    return;
+  }
+
+  // 将选中的标签ID添加到formData.tags中
+  // 这里假设activeIds直接就是标签名称数组，如果是ID则需要额外处理
+  selectedIds.forEach(id => {
+    // 避免重复添加标签
+    if (!formData.value.tags.includes(id)) {
+      formData.value.tags.push(id);
+    }
+  });
+
+  console.log('已选择的标签:', formData.value.tags);
+};
+
+// 递归查找标签ID对应的标签名
+const findTagById = (tags, tagId, callback) => {
+  for (const tag of tags) {
+    if (tag.children && Array.isArray(tag.children)) {
+      const found = tag.children.find(child => child.id === tagId);
+      if (found) {
+        callback(found.text);
+        return;
+      }
+      findTagById(tag.children, tagId, callback);
+    }
+  }
+};
+
+// 取消搜索
+const onCancelSearch = () => {
+  hasSearched.value = false;
+  searchText.value = '';
+  tagSearchInput.value = '';
+};
+
 // 页面加载时获取用户信息
 onMounted(() => {
   fetchUserInfo();
+  // 预先加载标签数据
+  searchExistingTags();
 });
 </script>
 
@@ -299,7 +463,7 @@ onMounted(() => {
 
     <!-- 操作按钮 -->
     <div class="action-buttons">
-      <van-cell title="编辑个人信息" is-link @click="openEditPopup('profile')"></van-cell>
+<van-cell title="编辑个人信息" is-link @click="openEditPopup('profile')"></van-cell>
       <van-cell title="修改密码" is-link @click="openEditPopup('password')"></van-cell>
       <van-cell></van-cell>
     </div>
@@ -342,7 +506,7 @@ onMounted(() => {
         <h3 class="popup-title">修改账号</h3>
         <div class="form-container">
           <van-field
-              v-model="formData.account"
+              v-model="formData.username"
               label="账号"
               placeholder="请输入账号"
               clearable
@@ -570,66 +734,83 @@ onMounted(() => {
     </van-popup>
 
 
-    <van-popup
-        v-model:show="showEditTagsPopup"
-        position="bottom"
-        round
-        :overlay-style="{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }"
-        teleport="body"
-    >
-      <div class="popup-content">
-        <h3 class="popup-title">编辑用户标签</h3>
-        <div class="form-container">
-          <div class="tag-input-group">
-            <van-field
-                v-model="tagSearchInput"
-                placeholder="搜索现有标签"
-                clearable
-                @input="searchExistingTags"
-                @focus="tagSearchInput.trim() ? searchExistingTags() : null"
-            >
-              <template #button>
-                <van-button size="small" type="primary" @click="searchExistingTags">搜索</van-button>
-              </template>
-            </van-field>
+    <template>
+      <!-- 标签编辑弹出层 - 优化布局 -->
+      <van-popup
+          v-model:show="showEditTagsPopup"
+          position="bottom"
+          round
+          :overlay-style="{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }"
+          teleport="body"
+          :style="{ height: 'auto', maxHeight: '80vh' }"
+      >
+        <div class="popup-content">
+          <h3 class="popup-title">编辑用户标签</h3>
+          <div class="form-container tag-form-container">
+            <div class="tag-input-group">
+              <van-search
+                  v-model="tagSearchInput"
+                  show-action
+                  placeholder="请输入搜索关键词"
+                  @search="searchExistingTags"
+                  @cancel="onCancelSearch"
+              />
 
-            <!-- 显示搜索结果 -->
-            <div v-if="showSearchResults" class="search-results">
-              <div class="search-results-title">可选标签：</div>
-              <van-tag
-                  v-for="tag in searchResults"
-                  :key="tag"
-                  type="default"
-                  @click="addSelectedTag(tag)"
-                  style="margin: 8px 8px 0 0; cursor: pointer;"
-              >
-                {{ tag }}
-              </van-tag>
+              <!-- 搜索提示 -->
+              <div v-if="hasSearched" style="padding: 10px 16px; color: #999;">
+                {{ getMatchedTagsCount() > 0 ? '以下是搜索结果：' : '未找到匹配的标签' }}
+              </div>
+
+              <!-- 显示搜索结果 -->
+              <div v-if="showSearchResults" class="search-results">
+                <van-tree-select
+                    v-model:active-id="activeIds"
+                    v-model:main-active-index="activeIndex"
+                    :items="filteredTags"
+                />
+              </div>
+            </div>
+
+            <div class="selected-tags">
+              <div class="selected-tags-title">已选标签：</div>
+              <van-row v-if="activeIds.length > 0" gutter="16" style="padding: 16px">
+                <van-col v-for="tagId in activeIds" :key="tagId">
+                  <van-tag closeable size="medium" type="primary" @close="close(tagId)">
+                    {{ tagId }}
+                  </van-tag>
+                </van-col>
+              </van-row>
+<!--              <div class="tags-scroll-container">-->
+<!--                <van-tag-->
+<!--                    v-for="(tag, index) in formData.tags"-->
+<!--                    :key="index"-->
+<!--                    type="primary"-->
+<!--                    closable-->
+<!--                    @close="removeTag(index)"-->
+<!--                    class="selected-tag"-->
+<!--                >-->
+<!--                  {{ tag }}-->
+<!--                </van-tag>-->
+<!--                <div v-if="formData.tags.length === 0" class="no-tags-hint">-->
+<!--                  暂无已选标签-->
+<!--                </div>-->
+<!--              </div>-->
+            </div>
+
+            <div class="tag-tips">
+              <p>提示：标签可以帮助其他用户更好地了解你</p>
+              <p v-if="activeIds.length > 0">已选择 {{ activeIds.length }} 个标签</p>
             </div>
           </div>
-          <div class="selected-tags">
-            <div class="selected-tags-title">已选标签：</div>
-            <van-tag
-                v-for="(tag, index) in formData.tags"
-                :key="index"
-                type="primary"
-                closable
-                @close="removeTag(index)"
-                style="margin: 8px 8px 0 0;"
-            >
-              {{ tag }}
-            </van-tag>
-          </div>
-          <div class="tag-tips">
-            <p>提示：标签可以帮助其他用户更好地了解你</p>
+
+          <div class="popup-buttons">
+            <van-button round type="default" @click="closePopup('tags')">取消</van-button>
+            <van-button round type="primary" @click="handleSave('tags')" :disabled="activeIds.length === 0">保存
+            </van-button>
           </div>
         </div>
-        <div class="popup-buttons">
-          <van-button round type="default" @click="closePopup('tags')" style="margin-right: 10px;">取消</van-button>
-          <van-button round type="primary" @click="handleSave('tags')">保存</van-button>
-        </div>
-      </div>
-    </van-popup>
+      </van-popup>
+    </template>
   </div>
 </template>
 
@@ -978,5 +1159,157 @@ onMounted(() => {
   bottom: 0 !important;
   left: 0 !important;
   right: 0 !important;
+}
+
+/* 标签搜索相关样式优化 */
+.tag-form-container {
+  max-height: 50vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tag-input-group {
+  margin-bottom: 20px;
+}
+
+/* 搜索结果区域样式 */
+.search-results {
+  margin-top: 10px;
+  padding: 12px;
+  background-color: #f8f8f8;
+  border-radius: 8px;
+  border: 1px solid #eee;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.search-results-title,
+.selected-tags-title {
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 10px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+}
+
+.search-results-title::before,
+.selected-tags-title::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 16px;
+  background-color: #1989fa;
+  margin-right: 8px;
+  border-radius: 2px;
+}
+
+/* 标签容器滚动优化 */
+.tags-scroll-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 5px 0;
+}
+
+/* 搜索结果标签样式 */
+.search-tag {
+  margin: 0 !important;
+  padding: 4px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: #fff;
+  border: 1px solid #e5e5e5;
+}
+
+.search-tag:hover {
+  background-color: #f0f7ff;
+  border-color: #1989fa;
+  color: #1989fa;
+}
+
+.search-tag:active {
+  transform: scale(0.95);
+}
+
+/* 已选标签样式 */
+.selected-tags {
+  margin-bottom: 20px;
+  padding: 12px;
+  background-color: #fff;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+
+.selected-tag {
+  margin: 0 !important;
+  padding: 5px 12px;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.selected-tag::v-deep(.van-tag__close) {
+  margin-left: 5px;
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.selected-tag::v-deep(.van-tag__close:hover) {
+  opacity: 1;
+}
+
+/* 无标签提示 */
+.no-tags-hint {
+  color: #999;
+  font-size: 13px;
+  padding: 15px 0;
+  text-align: center;
+  width: 100%;
+}
+
+/* 标签提示样式 */
+.tag-tips {
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  margin-bottom: 15px;
+  line-height: 1.5;
+}
+
+.tag-tips p {
+  margin: 3px 0;
+}
+
+/* 弹出层按钮样式优化 */
+.popup-buttons {
+  display: flex;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
+}
+
+.popup-buttons :deep(.van-button) {
+  flex: 1;
+  height: 44px;
+  font-size: 16px;
+}
+
+/* 标签最大数量限制提示 */
+.tag-limit-hint {
+  color: #ff4d4f;
+  font-size: 12px;
+  margin-top: 5px;
+  text-align: center;
 }
 </style>

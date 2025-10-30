@@ -1,6 +1,9 @@
 package com.scenebackend.model.dto;
 
 import lombok.Data;
+import lombok.Getter;
+
+import java.util.List;
 
 @Data
 public class UserUpdateRequest {
@@ -11,6 +14,8 @@ public class UserUpdateRequest {
     private String phone;
     private String email;
     private String plantCode;
-    private String tags;
+    @Getter
+    private List<String> tagList;
+
     // 不包含敏感字段：userPassword, userRole, userStatus等
 }
