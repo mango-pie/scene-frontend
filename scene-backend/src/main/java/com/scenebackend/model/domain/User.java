@@ -8,8 +8,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.scenebackend.utils.ObjectMapperSingleton;
 import lombok.Data;
-import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -149,9 +149,9 @@ public class User {
             this.tags = null;
             return;
         }
-
         try {
-            ObjectMapper objectMapper = new ObjectMapper();
+            // 如果序列化成功，直接存储为JSON字符串
+            ObjectMapper objectMapper = ObjectMapperSingleton.getInstance();
             this.tags = objectMapper.writeValueAsString(tagsList);
         } catch (JsonProcessingException e) {
             // 如果序列化失败，使用简单的字符串格式

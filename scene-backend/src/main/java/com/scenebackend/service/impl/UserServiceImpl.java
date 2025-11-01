@@ -12,6 +12,7 @@ import com.scenebackend.model.domain.User;
 import com.scenebackend.model.dto.UserUpdateRequest;
 import com.scenebackend.service.UserService;
 import com.scenebackend.mapper.UserMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
@@ -38,6 +39,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         this.userMapper = userMapper;
     }
 
+    /**
+     * 根据用户名查询用户
+     * @param username 用户名
+     * @return 用户列表
+     */
     @Override
     public List<User> searchUserByName(String username) {
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
@@ -69,7 +75,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         safetyUser.setProfile(originUser.getProfile());
         return safetyUser;
     }
-
+    /**
+     * 用户注册
+     * @param userAccount 用户账户
+     * @param userPassword 用户密码
+     * @param checkPassword 确认密码
+     * @return 用户ID
+     */
     @Override
     public long userRegister(String userAccount, String userPassword, String checkPassword) {
         // 1. 校验
@@ -111,6 +123,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return user.getId();
     }
 
+    /**
+     * 用户登录
+     * @param userAccount 用户账户
+     * @param userPassword 用户密码
+     * @return 用户信息
+     */
     @Override
     public User userLogin(String userAccount, String userPassword) {
         // 1. 校验
@@ -148,46 +166,32 @@ public int updateUser(UserUpdateRequest request) {
     if (request == null || request.getId() == null) {
         return 0;
     }
+    //创建用户实体
     User user = new User();
     user.setId(request.getId());
 
-    boolean hasUpdateField = false;
-
-    // 只允许修改特定字段
+    // 设置可更新字段
     if (StringUtils.isNotBlank(request.getUsername())) {
         user.setUsername(request.getUsername());
-        hasUpdateField = true;
     }
     if (StringUtils.isNotBlank(request.getAvatarUrl())) {
         user.setAvatarUrl(request.getAvatarUrl());
-        hasUpdateField = true;
     }
     if (request.getGender() != null) {
         user.setGender(request.getGender());
-        hasUpdateField = true;
     }
     if (StringUtils.isNotBlank(request.getPhone())) {
         user.setPhone(request.getPhone());
-        hasUpdateField = true;
     }
     if (StringUtils.isNotBlank(request.getEmail())) {
         user.setEmail(request.getEmail());
-        hasUpdateField = true;
     }
     if (StringUtils.isNotBlank(request.getPlantCode())) {
         user.setPlanetCode(request.getPlantCode());
-        hasUpdateField = true;
     }
     if (request.getTagList() != null) {
         System.out.println("标签列表: " + request.getTagList());
         user.setTagList(request.getTagList());
-        hasUpdateField = true;
-    }
-
-    // 如果没有需要更新的字段，直接返回0
-    if (!hasUpdateField) {
-        System.out.println("没有需要更新的字段，跳过数据库操作");
-        return 0;
     }
     try {
         boolean updateResult = this.updateById(user);

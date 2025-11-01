@@ -1,7 +1,9 @@
 package com.scenebackend.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
@@ -11,11 +13,26 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
 
+    @Autowired
+    private JwtInterceptor jwtInterceptor;
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(jwtInterceptor)
+                .addPathPatterns("/**")
+                .excludePathPatterns(
+                        "/user/login",
+                        "/user/register",
+                        "/tag/search",  // 添加标签查询接口排除
+                        "/error"
+                );
+    }
+
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         // 允许所有路径都支持跨域
         registry.addMapping("/**")
-                // 允许的源，这里配置为允许localhost:5174访问，也可以使用*允许所有源
+                // 允许的源，这里配置为允许localhost:5173访问，也可以使用*允许所有源
                 .allowedOrigins("http://localhost:5173")
                 // 允许的HTTP方法
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")

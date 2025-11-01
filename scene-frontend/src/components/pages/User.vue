@@ -71,6 +71,12 @@ const handleLogin = async () => {
     // 登录成功后的处理
     console.log('登录结果:', result);
 
+    // 保存token到localStorage
+    if (result.token) {
+      localStorage.setItem('token', result.token);
+      console.log('Token已保存到localStorage');
+    }
+
     // 保存用户信息
     localStorage.setItem('currentUser', JSON.stringify(result));
 
@@ -89,37 +95,89 @@ const handleLogin = async () => {
 };
 
 // 检查登录状态 - 不依赖token
+// const checkLoginStatus = async () => {
+//   try {
+//     // 先检查本地存储中的用户信息
+//     const storedUser = localStorage.getItem('currentUser');
+//
+//     if (storedUser) {
+//       try {
+//         userInfo.value = JSON.parse(storedUser);
+//         isLoggedIn.value = true;
+//         console.log('从本地存储恢复用户信息');
+//         return;
+//       } catch (e) {
+//         console.error('解析本地用户信息失败:', e);
+//         localStorage.removeItem('currentUser');
+//       }
+//     }
+//
+//     // 尝试直接通过API获取当前用户信息
+//     // 注意：这里不依赖token，而是依赖浏览器的Cookie
+//     const user = await getCurrentUser();
+//     if (user) {
+//       userInfo.value = user;
+//       isLoggedIn.value = true;
+//       localStorage.setItem('currentUser', JSON.stringify(user));
+//       console.log('获取到的用户信息:', user);
+//     } else {
+//       console.warn('API返回空用户信息');
+//       isLoggedIn.value = false;
+//     }
+//   } catch (error) {
+//     console.error('获取用户信息失败:', error);
+//     isLoggedIn.value = false;
+//     if (error.code === 'ERR_NETWORK') {
+//       showToast('无法连接到服务器，请检查网络连接');
+//     }
+//   }
+// };
 const checkLoginStatus = async () => {
   try {
-    // 先检查本地存储中的用户信息
+    // 先检查本地存储中的token
+    const token = localStorage.getItem('token');
     const storedUser = localStorage.getItem('currentUser');
 
-    if (storedUser) {
+    if (token && storedUser) {
       try {
         userInfo.value = JSON.parse(storedUser);
         isLoggedIn.value = true;
-        console.log('从本地存储恢复用户信息');
+        console.log('从本地存储恢复登录状态');
         return;
       } catch (e) {
         console.error('解析本地用户信息失败:', e);
         localStorage.removeItem('currentUser');
+        localStorage.removeItem('token');
       }
     }
 
-    // 尝试直接通过API获取当前用户信息
-    // 注意：这里不依赖token，而是依赖浏览器的Cookie
-    const user = await getCurrentUser();
-    if (user) {
-      userInfo.value = user;
-      isLoggedIn.value = true;
-      localStorage.setItem('currentUser', JSON.stringify(user));
-      console.log('获取到的用户信息:', user);
+    // 如果有token，尝试通过API获取当前用户信息
+    if (token) {
+      try {
+        const user = await getCurrentUser();
+        if (user) {
+          userInfo.value = user;
+          isLoggedIn.value = true;
+          localStorage.setItem('currentUser', JSON.stringify(user));
+          console.log('通过token获取用户信息成功');
+        } else {
+          console.warn('API返回空用户信息');
+          isLoggedIn.value = false;
+          localStorage.removeItem('token');
+          localStorage.removeItem('currentUser');
+        }
+      } catch (error) {
+        console.error('通过token获取用户信息失败:', error);
+        isLoggedIn.value = false;
+        localStorage.removeItem('token');
+        localStorage.removeItem('currentUser');
+      }
     } else {
-      console.warn('API返回空用户信息');
+      console.log('未找到token，用户未登录');
       isLoggedIn.value = false;
     }
   } catch (error) {
-    console.error('获取用户信息失败:', error);
+    console.error('检查登录状态失败:', error);
     isLoggedIn.value = false;
     if (error.code === 'ERR_NETWORK') {
       showToast('无法连接到服务器，请检查网络连接');
@@ -127,12 +185,28 @@ const checkLoginStatus = async () => {
   }
 };
 
-// 用户退出登录处理
+
+// // 用户退出登录处理
+// const handleLogout = async () => {
+//   try {
+//     await userLogout();
+//     // 清除本地存储中的用户信息
+//     localStorage.removeItem('currentUser');
+//     userInfo.value = null;
+//     isLoggedIn.value = false;
+//     showToast('已退出登录');
+//     router.push('/');
+//   } catch (error) {
+//     showToast('退出登录失败');
+//     console.error('退出登录错误:', error);
+//   }
+// };
 const handleLogout = async () => {
   try {
     await userLogout();
-    // 清除本地存储中的用户信息
+    // 清除本地存储中的用户信息和token
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('token');
     userInfo.value = null;
     isLoggedIn.value = false;
     showToast('已退出登录');

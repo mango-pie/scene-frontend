@@ -10,7 +10,27 @@ interface User {
   gender: number;
   profile: string;
   tagList: string[];
+  avatarUrl?: string;
+  userStatus?: number;
+  userRole?: number;
+  planetCode?: string;
   // 其他用户属性...
+}
+
+// 登录响应类型定义
+interface LoginResponse {
+  id: number;
+  username: string;
+  userAccount: string;
+  avatarUrl: string;
+  gender: number;
+  phone: string;
+  email: string;
+  userStatus: number;
+  userRole: number;
+  planetCode: string;
+  token: string;
+  expireTime: number;
 }
 
 // 用户注册
@@ -26,7 +46,7 @@ export const userRegister = (data: {
 export const userLogin = (data: {
   userAccount: string;
   userPassword: string;
-}) => {
+}): Promise<LoginResponse> => {
   return request.post('/user/login', {}, { params: data });
 };
 
@@ -51,7 +71,7 @@ export const getUserList = (pageNum: number, pageSize: number) => {
 };
 
 // 获取当前登录用户
-export const getCurrentUser = () => {
+export const getCurrentUser = (): Promise<User> => {
   return request.get('/user/current');
 };
 

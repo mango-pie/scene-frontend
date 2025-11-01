@@ -2,13 +2,14 @@ package com.scenebackend.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.scenebackend.model.domain.User;
+import com.scenebackend.model.dto.LoginResponse;
 import com.scenebackend.model.dto.UserUpdateRequest;
 import com.scenebackend.service.UserService;
+import com.scenebackend.utils.JwtUtil;
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
-//import javax.annotation.Resource;
-import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -17,7 +18,8 @@ public class UserController {
 
     @Resource
     private UserService userService;
-
+    @Autowired
+    private JwtUtil jwtUtil;
     /**
      * 根据用户名搜索用户
      * @param username 用户名
@@ -49,9 +51,35 @@ public class UserController {
      * @return 用户信息
      */
     @PostMapping("/login")
-    public User userLogin(@RequestParam String userAccount,
-                          @RequestParam String userPassword) {
-        return userService.userLogin(userAccount, userPassword);
+    public LoginResponse login(@RequestParam String userAccount,
+                               @RequestParam String userPassword) {
+    
+        // 验证用户登录
+        User user = userService.userLogin(userAccount, userPassword);
+    
+        if (user == null) {
+            throw new RuntimeException("账号或密码错误");
+        }
+    
+        // 生成token
+        String token = jwtUtil.generateToken(user.getId(), user.getUsername());
+    
+        // 构建响应
+        LoginResponse response = new LoginResponse();
+        response.setId(user.getId());
+        response.setUsername(user.getUsername());
+        response.setUserAccount(user.getUserAccount());
+        response.setAvatarUrl(user.getAvatarUrl());
+        response.setGender(user.getGender());
+        response.setPhone(user.getPhone());
+        response.setEmail(user.getEmail());
+        response.setUserStatus(user.getUserStatus());
+        response.setUserRole(user.getUserRole());
+        response.setTagList(user.getTagList().toArray(new String[0]));
+        response.setToken(token);
+        response.setExpireTime(System.currentTimeMillis() + 24 * 60 * 60 * 1000); // 24小时
+    
+        return response;
     }
 
     /**
@@ -81,18 +109,6 @@ public class UserController {
     @PostMapping("/update")
     public int updateUser(@RequestBody UserUpdateRequest user) {
         try {
-            System.out.println("接收到的用户更新请求:");
-            System.out.println("ID: " + user.getId());
-            System.out.println("用户名: " + user.getUsername());
-            System.out.println("头像URL: " + user.getAvatarUrl());
-            System.out.println("性别: " + user.getGender());
-            System.out.println("电话: " + user.getPhone());
-            System.out.println("邮箱: " + user.getEmail());
-            System.out.println("星球代码: " + user.getPlantCode());
-            System.out.println("标签列表:");
-            for (String tag : user.getTagList()) {
-                System.out.println("  - " + tag);
-            }
             return userService.updateUser(user);
         } catch (Exception e) {
             System.err.println("更新用户信息时发生错误:");
@@ -140,9 +156,17 @@ public class UserController {
      * @return 用户信息
      */
     @GetMapping("/current")
-    public User getCurrentUser() {
-        // 实际项目中这里应该从会话或Token中获取当前登录用户ID，再调用getUserById
-        // 这里返回null，需要根据实际认证机制实现
-        return null;
+    public User getCurrentUser(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new RuntimeException("未提供有效的token");
+        }
+
+        String token = authHeader.substring(7);
+        if (!jwtUtil.validateToken(token)) {
+            throw new RuntimeException("token无效或已过期");
+        }
+
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        return userService.getById(userId);
     }
 }
