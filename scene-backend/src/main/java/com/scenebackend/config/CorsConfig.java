@@ -13,18 +13,29 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
 
+//    @Autowired
+//    private JwtInterceptor jwtInterceptor;
     @Autowired
-    private JwtInterceptor jwtInterceptor;
-
+    private HybridAuthInterceptor hybridAuthInterceptor;
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(jwtInterceptor)
+        registry.addInterceptor(hybridAuthInterceptor)
                 .addPathPatterns("/**")
                 .excludePathPatterns(
                         "/user/login",
                         "/user/register",
                         "/tag/search",  // 添加标签查询接口排除
-                        "/error"
+                        "/error",
+                        // Swagger UI 相关路径
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/v3/api-docs/**",
+                        "/webjars/**",
+                        "/swagger-resources/**",
+                        "/swagger-ui.html/**",
+                        "/swagger-ui/index.html",
+                        "/doc.html"
+
                 );
     }
 

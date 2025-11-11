@@ -1,4 +1,5 @@
 import request from './request';
+import {showToast} from "vant";
 
 // 用户类型定义
 interface User {
@@ -30,6 +31,7 @@ interface LoginResponse {
   userRole: number;
   planetCode: string;
   token: string;
+  sessionId: string;
   expireTime: number;
 }
 
@@ -39,7 +41,7 @@ export const userRegister = (data: {
   userPassword: string;
   checkPassword: string;
 }) => {
-  return request.post('/user/register', data);
+  return request.post('/user/register', {}, { params: data });
 };
 
 // 用户登录 - 修改为使用查询参数传递
@@ -79,4 +81,12 @@ export const getCurrentUser = (): Promise<User> => {
 export const updateUser = (user: Partial<User>) => {
   console.log('更新用户信息:', user);
   return request.post('/user/update', user);
+};
+
+export  const changePassword = (data: {
+  oldPassword: string;
+  newPassword: string;
+  userId: number;
+}) => {
+  return request.post('/user/changePassword',{}, { params: data });
 };

@@ -1,12 +1,13 @@
 <script setup>
 import {computed, onMounted, ref} from 'vue';
 import {Button, Cell, CellGroup, Divider, Image as VanImage, showToast, Tag} from 'vant';
-import {updateUser} from '../../api/user.js'
+import {changePassword, updateUser, userLogout} from '../../api/user.js'
 import {searchTags} from '../../api/tag.js'
 import {convertTagsToTree} from '../../utils/tag.js'
+import {useRouter} from "vue-router";
 // 用户信息数据
 const userInfo = ref(null);
-
+const router = useRouter();
 // 控制弹出层显示状态
 const showPopup = ref(false);
 const showEditAccountPopup = ref(false);
@@ -213,26 +214,20 @@ const handleSave = (popupName) => {
     case 'gender':
       updateUsers({gender: formData.value.gender, id: userInfo.value.id});
       break;
-    case 'profile':
-      updateUsers({
-        username: formData.value.username,
-        plantCode: formData.value.plantCode,
-        email: formData.value.email,
-        phone: formData.value.phone,
-        id: userInfo.value.id
-      });
-      break;
+
     case 'password':
-      if (formData.value.newPassword === formData.value.confirmPassword) {
-        updateUsers({
+
+         changePasswordResult({
           oldPassword: formData.value.oldPassword,
           newPassword: formData.value.newPassword,
-          id: userInfo.value.id
-        });
-      } else {
-        showToast('两次输入的新密码不一致');
-        return;
-      }
+          userId: userInfo.value.id
+         }).then(result => {
+          if (result === 1) {
+            showToast('密码更新成功');
+          } else {
+            showToast('密码更新失败，请重试');
+          }
+         });
       break;
     case 'avatar':
       // 头像上传功能待实现
@@ -248,6 +243,42 @@ const handleSave = (popupName) => {
   closePopup(popupName);
 };
 
+const changePasswordResult = async (data) => {
+  if(!formData.value.oldPassword || !formData.value.newPassword || !formData.value.confirmPassword) {
+    showToast('请填写完整密码信息');
+    return null;
+  }
+  if (formData.value.newPassword !== formData.value.confirmPassword) {
+    showToast('两次输入的新密码不一致');
+    return null;
+  }
+  try {
+    const result = await changePassword(data);
+    if (result === 1) {
+      showToast('密码更新成功，退出登录');
+      //退出登录
+        try {
+          await userLogout();
+          // 清除本地存储中的用户信息和token
+          localStorage.removeItem('currentUser');
+          localStorage.removeItem('token');
+          userInfo.value = null;
+          showToast('已退出登录');
+          router.push('/');
+        } catch (error) {
+          showToast('退出登录失败');
+          console.error('退出登录错误:', error);
+        }
+    } else {
+      showToast('密码更新失败，请重试');
+    }
+    return result;
+  } catch (error) {
+    console.error('修改密码失败:', error);
+    showToast('修改密码失败');
+    return null;
+  }
+};
 // 更新用户信息
 const updateUsers = async (user) => {
   try {
@@ -330,21 +361,6 @@ const removeTag = (index) => {
   formData.value.tags.splice(index, 1);
 };
 
-// 当选择标签时触发
-// const onSelectTag = (tagIds) => {
-//   activeIds.value = tagIds;
-//   // 清空已选标签，重新添加
-//   formData.value.tags = [];
-//   // 遍历所有标签，找到选中的标签名
-//   tagIds.forEach(tagId => {
-//     // 在原始标签数据中查找标签名
-//     findTagById(originalTags.value, tagId, (tagName) => {
-//       if (tagName && !formData.value.tags.includes(tagName)) {
-//         formData.value.tags.push(tagName);
-//       }
-//     });
-//   });
-// };
 const onSelectTag = (selectedIds) => {
   // 清空现有标签，防止重复添加
   formData.value.tags = [];
@@ -384,6 +400,17 @@ const onCancelSearch = () => {
   hasSearched.value = false;
   searchText.value = '';
   tagSearchInput.value = '';
+};
+
+const tagColors = [
+  '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57',
+  '#ff9ff3', '#54a0ff', '#5f27cd', '#00d2d3', '#ff9f43',
+  '#10ac84', '#ee5a24', '#a29bfe', '#fd79a8', '#e17055'
+];
+
+// 获取标签颜色
+const getTagColor = (index) => {
+  return tagColors[index % tagColors.length];
 };
 
 // 页面加载时获取用户信息
@@ -428,7 +455,7 @@ onMounted(() => {
       <h3 class="section-title">基本信息</h3>
       <van-cell-group inset>
         <van-cell title="用户ID" :value="userInfo?.id || '-'" />
-        <van-cell title="账号" is-link :value="userInfo?.username || '-'" @click="openEditPopup('account')" />
+        <van-cell title="昵称" is-link :value="userInfo?.username || '-'" @click="openEditPopup('account')" />
         <van-cell title="邮箱" is-link :value="userInfo?.email || '-'" @click="openEditPopup('email')" />
         <van-cell title="手机号码" is-link :value="userInfo?.phone || '-'" @click="openEditPopup('phone')" />
         <van-cell title="性别" is-link :value="userGender" @click="openEditPopup('gender')" />
@@ -451,19 +478,47 @@ onMounted(() => {
     <Divider />
 
     <!-- 用户标签区域 -->
-    <div class="section" v-if="userInfo?.tagList?.length > 0">
-      <h3 class="section-title">用户标签</h3>
-      <Button type="primary" size="small" @click="openEditPopup('tags')">编辑标签</Button>
-      <div class="tags-container">
-        <Tag v-for="tag in userInfo.tagList" :key="tag" type="default" style="margin: 8px 8px 0 0;">
-          {{ tag }}
-        </Tag>
+    <div class="section">
+      <div class="section-header">
+        <h3 class="section-title">用户标签</h3>
+        <van-button
+            type="primary"
+            size="small"
+            @click="openEditPopup('tags')"
+            class="edit-tags-btn"
+            icon="edit"
+        >
+          编辑标签
+        </van-button>
+      </div>
+
+      <div class="tags-section" v-if="userInfo?.tagList?.length > 0">
+        <div class="tags-container">
+          <van-tag
+              v-for="(tag, index) in userInfo.tagList"
+              :key="tag"
+              type="primary"
+              size="medium"
+              class="custom-tag"
+              :color="getTagColor(index)"
+              text-color="#fff"
+          >
+            {{ tag }}
+          </van-tag>
+        </div>
+        <p class="tags-count">共 {{ userInfo.tagList.length }} 个标签</p>
+      </div>
+
+      <div class="empty-tags" v-else>
+        <van-icon name="label-o" size="48" color="#c8c9cc" />
+        <p class="empty-text">暂无标签</p>
+        <p class="empty-subtext">点击编辑标签添加个性化标签</p>
       </div>
     </div>
 
     <!-- 操作按钮 -->
     <div class="action-buttons">
-<van-cell title="编辑个人信息" is-link @click="openEditPopup('profile')"></van-cell>
+<!--<van-cell title="编辑个人信息" is-link @click="openEditPopup('profile')"></van-cell>-->
       <van-cell title="修改密码" is-link @click="openEditPopup('password')"></van-cell>
       <van-cell></van-cell>
     </div>
@@ -507,8 +562,8 @@ onMounted(() => {
         <div class="form-container">
           <van-field
               v-model="formData.username"
-              label="账号"
-              placeholder="请输入账号"
+              label="昵称"
+              placeholder="请输入昵称"
               clearable
           />
         </div>
@@ -1312,4 +1367,85 @@ onMounted(() => {
   margin-top: 5px;
   text-align: center;
 }
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #323233;
+  margin: 0;
+}
+
+.edit-tags-btn {
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+.tags-section {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.custom-tag {
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.custom-tag:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.tags-count {
+  font-size: 12px;
+  color: #969799;
+  text-align: center;
+  margin: 0;
+}
+
+.empty-tags {
+  text-align: center;
+  padding: 40px 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  margin-top: 8px;
+}
+
+.empty-text {
+  font-size: 16px;
+  color: #969799;
+  margin: 16px 0 8px;
+}
+
+.empty-subtext {
+  font-size: 14px;
+  color: #c8c9cc;
+  margin: 0;
+}
+
+/* 标签颜色函数 */
+:deep(.custom-tag) {
+  /* 动态颜色将在JavaScript中设置 */
+}
+
+
 </style>

@@ -63,5 +63,7 @@ public interface UserService extends IService<User> {
      */
     int updateUserStatus(Long id, Integer status);
 
+    int changePassword(Long userId, String oldPassword, String newPassword);
+
     //List<User> searchUserByTags(List<String> tagList);
 }

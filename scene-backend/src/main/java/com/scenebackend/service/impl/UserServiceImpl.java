@@ -237,6 +237,25 @@ public int updateUser(UserUpdateRequest request) {
         return updateResult ? 1 : 0;
     }
 
+    @Override
+    public int changePassword(Long userId, String oldPassword, String newPassword) {
+        // 1. 校验
+        if (userId == null || oldPassword == null || newPassword == null) {
+            return 0;
+        }
+        // 2. 校验旧密码是否匹配
+        User user = this.getById(userId);
+        if (user == null || !user.getUserPassword().equals(DigestUtils.md5DigestAsHex((SALT + oldPassword).getBytes()))) {
+            return 0;
+        }
+        // 3. 加密新密码
+        String encryptNewPassword = DigestUtils.md5DigestAsHex((SALT + newPassword).getBytes());
+        // 4. 更新密码
+        user.setUserPassword(encryptNewPassword);
+        boolean updateResult = this.updateById(user);
+        return updateResult ? 1 : 0;
+    }
+
 
     @Override
     public List<User> searchUsersByTags(List<String> tagNameList)

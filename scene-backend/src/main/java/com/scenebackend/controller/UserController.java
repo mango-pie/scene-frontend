@@ -11,7 +11,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-
+import com.scenebackend.utils.SessionService;
+import jakarta.servlet.http.HttpSession;
 @RestController
 @RequestMapping("/api/user")
 public class UserController {
@@ -20,6 +21,8 @@ public class UserController {
     private UserService userService;
     @Autowired
     private JwtUtil jwtUtil;
+    @Autowired
+    private SessionService sessionService;
     /**
      * 根据用户名搜索用户
      * @param username 用户名
@@ -52,18 +55,22 @@ public class UserController {
      */
     @PostMapping("/login")
     public LoginResponse login(@RequestParam String userAccount,
-                               @RequestParam String userPassword) {
-    
+                               @RequestParam String userPassword,
+                               HttpServletRequest request) {
+
         // 验证用户登录
         User user = userService.userLogin(userAccount, userPassword);
-    
+
         if (user == null) {
             throw new RuntimeException("账号或密码错误");
         }
-    
+
         // 生成token
         String token = jwtUtil.generateToken(user.getId(), user.getUsername());
-    
+
+        // 生成session
+        String sessionId = sessionService.createSession(user);
+
         // 构建响应
         LoginResponse response = new LoginResponse();
         response.setId(user.getId());
@@ -77,8 +84,9 @@ public class UserController {
         response.setUserRole(user.getUserRole());
         response.setTagList(user.getTagList().toArray(new String[0]));
         response.setToken(token);
+        response.setSessionId(sessionId); // 返回sessionId
         response.setExpireTime(System.currentTimeMillis() + 24 * 60 * 60 * 1000); // 24小时
-    
+
         return response;
     }
 
@@ -86,8 +94,19 @@ public class UserController {
      * 用户登出
      * @return 登出结果
      */
+//    @PostMapping("/logout")
+//    public int userLogout() {
+//        return userService.userLogout();
+//    }
     @PostMapping("/logout")
-    public int userLogout() {
+    public int userLogout(@RequestHeader(value = "X-Session-Id", required = false) String sessionId,
+                          @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        // 清除session
+        if (sessionId != null && !sessionId.trim().isEmpty()) {
+            sessionService.deleteSession(sessionId);
+        }
+
+        // 清除token（在前端清除localStorage中的token）
         return userService.userLogout();
     }
 
@@ -156,17 +175,38 @@ public class UserController {
      * @return 用户信息
      */
     @GetMapping("/current")
-    public User getCurrentUser(@RequestHeader(value = "Authorization", required = false) String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new RuntimeException("未提供有效的token");
+    public User getCurrentUser(@RequestHeader(value = "X-Session-Id", required = false) String sessionId,
+                               @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        // 优先使用session认证
+        if (sessionId != null && !sessionId.trim().isEmpty()) {
+            User user = sessionService.getUserBySession(sessionId);
+            if (user != null) {
+                return user;
+            }
         }
 
-        String token = authHeader.substring(7);
-        if (!jwtUtil.validateToken(token)) {
-            throw new RuntimeException("token无效或已过期");
+        // 如果session认证失败，使用token认证
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            if (jwtUtil.validateToken(token)) {
+                Long userId = jwtUtil.getUserIdFromToken(token);
+                return userService.getById(userId);
+            }
         }
 
-        Long userId = jwtUtil.getUserIdFromToken(token);
-        return userService.getById(userId);
+        throw new RuntimeException("未提供有效的认证信息");
+    }
+    /**
+     * 修改密码
+     * @param oldPassword 原密码
+     * @param newPassword 新密码
+     * @param userId 用户ID
+     * @return 修改结果
+     */
+    @PostMapping("/changePassword")
+    public int changePassword(@RequestParam String oldPassword,
+                              @RequestParam String newPassword,
+                              @RequestParam Long userId) {
+        return userService.changePassword(userId, oldPassword, newPassword);
     }
 }
