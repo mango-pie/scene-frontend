@@ -75,4 +75,17 @@ public class SessionService {
             }
         }
     }
+
+    public boolean updateSessionUser(String sessionId, User user) {
+        if (sessionId == null || sessionId.trim().isEmpty() || user == null) {
+            return false;
+        }
+
+        String sessionKey = SESSION_PREFIX + sessionId;
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(sessionKey))) {
+            redisTemplate.opsForValue().set(sessionKey, user, SESSION_EXPIRE_HOURS, TimeUnit.HOURS);
+            return true;
+        }
+        return false;
+    }
 }

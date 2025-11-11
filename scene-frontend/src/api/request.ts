@@ -58,7 +58,7 @@ request.interceptors.response.use(
           // 清除所有认证信息
           localStorage.removeItem('token');
           localStorage.removeItem('sessionId');
-          localStorage.removeItem('currentUser');
+          // localStorage.removeItem('currentUser');
 
           // 可以在这里跳转到登录页面
           if (window.location.pathname !== '/user') {

@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.scenebackend.model.domain.User;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.scenebackend.model.dto.UserUpdateRequest;
+import jakarta.websocket.Session;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.session.SessionRepository;
 
 import java.util.List;
 
@@ -16,6 +19,7 @@ public interface UserService extends IService<User> {
     /**
      * 根据用户名搜索用户
      */
+
     List<User> searchUserByName(String userAccount);
 
     /**
@@ -64,6 +68,8 @@ public interface UserService extends IService<User> {
     int updateUserStatus(Long id, Integer status);
 
     int changePassword(Long userId, String oldPassword, String newPassword);
+
+
 
     //List<User> searchUserByTags(List<String> tagList);
 }

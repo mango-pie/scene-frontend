@@ -84,15 +84,15 @@ const handleLogin = async () => {
       console.log('SessionId已保存到localStorage');
     }
 
-    // 保存用户信息
-    localStorage.setItem('currentUser', JSON.stringify(result));
+    // 不再保存用户信息到localStorage，直接从API获取
+    // localStorage.setItem('currentUser', JSON.stringify(result));
 
     // 直接设置登录状态
     isLoggedIn.value = true;
     userInfo.value = result;
 
     showToast('登录成功');
-
+    await checkLoginStatus();
     // 可以跳转到首页或保持当前页面
     // router.push('/');
   } catch (error) {
@@ -100,6 +100,7 @@ const handleLogin = async () => {
     console.error('登录错误:', error);
   }
 };
+
 const handleRegister = () => {
   router.push('/register');
 }
@@ -109,7 +110,6 @@ const checkLoginStatus = async () => {
     // 先检查本地存储中的认证信息
     const sessionId = localStorage.getItem('sessionId');
     const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('currentUser');
 
     // 如果有sessionId或token，尝试通过API获取当前用户信息
     if (sessionId || token) {
@@ -118,7 +118,8 @@ const checkLoginStatus = async () => {
         if (user) {
           userInfo.value = user;
           isLoggedIn.value = true;
-          localStorage.setItem('currentUser', JSON.stringify(user));
+          // 不再保存到localStorage
+          // localStorage.setItem('currentUser', JSON.stringify(user));
           console.log('通过混合认证获取用户信息成功');
         } else {
           console.warn('API返回空用户信息');
@@ -126,7 +127,7 @@ const checkLoginStatus = async () => {
           // 清除所有认证信息
           localStorage.removeItem('token');
           localStorage.removeItem('sessionId');
-          localStorage.removeItem('currentUser');
+          // localStorage.removeItem('currentUser');
         }
       } catch (error) {
         console.error('通过混合认证获取用户信息失败:', error);
@@ -134,7 +135,7 @@ const checkLoginStatus = async () => {
         // 清除所有认证信息
         localStorage.removeItem('token');
         localStorage.removeItem('sessionId');
-        localStorage.removeItem('currentUser');
+        // localStorage.removeItem('currentUser');
       }
     } else {
       console.log('未找到认证信息，用户未登录');
@@ -152,10 +153,10 @@ const checkLoginStatus = async () => {
 const handleLogout = async () => {
   try {
     await userLogout();
-    // 清除本地存储中的用户信息、token和sessionId
-    localStorage.removeItem('currentUser');
+    // 清除本地存储中的认证信息，不再清除用户信息
+    // localStorage.removeItem('currentUser');
     localStorage.removeItem('token');
-    localStorage.removeItem('sessionId'); // 新增：清除sessionId
+    localStorage.removeItem('sessionId');
     userInfo.value = null;
     isLoggedIn.value = false;
     showToast('已退出登录');
@@ -165,7 +166,6 @@ const handleLogout = async () => {
     console.error('退出登录错误:', error);
   }
 };
-
 
 // 处理头像点击
 const handleAvatarClick = () => {

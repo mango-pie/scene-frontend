@@ -1,7 +1,7 @@
 <script setup>
 import {computed, onMounted, ref} from 'vue';
 import {Button, Cell, CellGroup, Divider, Image as VanImage, showToast, Tag} from 'vant';
-import {changePassword, updateUser, userLogout} from '../../api/user.js'
+import {changePassword, getCurrentUser, updateUser, userLogout} from '../../api/user.js'
 import {searchTags} from '../../api/tag.js'
 import {convertTagsToTree} from '../../utils/tag.js'
 import {useRouter} from "vue-router";
@@ -100,29 +100,38 @@ const formattedCreateTime = computed(() => {
   return date.toLocaleString('zh-CN');
 });
 
-// 获取用户信息
-const fetchUserInfo = () => {
+const fetchUserInfo = async () => {
   try {
-    const user = JSON.parse(localStorage.getItem('currentUser'));
-    userInfo.value = user;
-    // 初始化表单数据
-    formData.value = {
-      account: user.userAccount || '',
-      email: user.email || '',
-      phone: user.phone || '',
-      gender: user.gender,
-      username: user.username || '',
-      plantCode: user.plantCode || '',
-      oldPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-      tags: user.tagList ? [...user.tagList] : [] // 正确初始化标签
-    };
-    activeIds.value = formData.value.tags;
+    const user = await getCurrentUser();
+    if (user) {
+      userInfo.value = user;
+      // 初始化表单数据
+      formData.value = {
+        account: user.userAccount || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        gender: user.gender,
+        username: user.username || '',
+        plantCode: user.plantCode || '',
+        oldPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+        tags: user.tagList ? [...user.tagList] : [] // 正确初始化标签
+      };
+      activeIds.value = formData.value.tags;
+    } else {
+      console.error('获取用户信息失败：用户未登录');
+      showToast('用户未登录，请重新登录');
+      router.push('/user');
+    }
   } catch (error) {
     console.error('获取用户信息失败:', error);
+    showToast('获取用户信息失败，请检查网络连接');
+    // 如果获取失败，跳转到登录页面
+    router.push('/user');
   }
 };
+
 
 // 打开修改弹窗时同步数据
 const openEditPopup = (popupName) => {
@@ -242,7 +251,6 @@ const handleSave = (popupName) => {
   }
   closePopup(popupName);
 };
-
 const changePasswordResult = async (data) => {
   if(!formData.value.oldPassword || !formData.value.newPassword || !formData.value.confirmPassword) {
     showToast('请填写完整密码信息');
@@ -257,18 +265,18 @@ const changePasswordResult = async (data) => {
     if (result === 1) {
       showToast('密码更新成功，退出登录');
       //退出登录
-        try {
-          await userLogout();
-          // 清除本地存储中的用户信息和token
-          localStorage.removeItem('currentUser');
-          localStorage.removeItem('token');
-          userInfo.value = null;
-          showToast('已退出登录');
-          router.push('/');
-        } catch (error) {
-          showToast('退出登录失败');
-          console.error('退出登录错误:', error);
-        }
+      try {
+        await userLogout();
+        // 清除本地存储中的认证信息
+        localStorage.removeItem('token');
+        localStorage.removeItem('sessionId');
+        userInfo.value = null;
+        showToast('已退出登录');
+        router.push('/');
+      } catch (error) {
+        showToast('退出登录失败');
+        console.error('退出登录错误:', error);
+      }
     } else {
       showToast('密码更新失败，请重试');
     }
@@ -279,14 +287,13 @@ const changePasswordResult = async (data) => {
     return null;
   }
 };
-// 更新用户信息
 const updateUsers = async (user) => {
   try {
     // 确保性别数据类型正确
     if (user.gender !== undefined) {
       user.gender = Number(user.gender);
     }
-    const result = await updateUser(user);
+    const result = await updateUser(user, localStorage.getItem('sessionId'));
     if (result === 1) {
       // 立即更新本地状态
       if (userInfo.value) {
@@ -295,11 +302,10 @@ const updateUsers = async (user) => {
           ...user
         };
       }
-      localStorage.setItem('currentUser', JSON.stringify(userInfo.value));
-      setTimeout(() => {
-        fetchUserInfo();
-      }, 100);
+      // 不再保存到localStorage，而是重新从API获取最新数据
+      await fetchUserInfo();
       showToast('更新成功');
+
     } else {
       showToast('更新失败，请重试');
       console.error('更新失败，返回结果:', result);
@@ -1446,6 +1452,4 @@ onMounted(() => {
 :deep(.custom-tag) {
   /* 动态颜色将在JavaScript中设置 */
 }
-
-
 </style>

@@ -24,7 +24,7 @@ export const SessionManager = {
     clearAllAuth() {
         localStorage.removeItem('token');
         localStorage.removeItem('sessionId');
-        localStorage.removeItem('currentUser');
+        // localStorage.removeItem('currentUser');
     }
 };
 

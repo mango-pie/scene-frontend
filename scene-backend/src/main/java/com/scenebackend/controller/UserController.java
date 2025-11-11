@@ -11,6 +11,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
 import com.scenebackend.utils.SessionService;
 import jakarta.servlet.http.HttpSession;
 @RestController
@@ -73,16 +75,6 @@ public class UserController {
 
         // 构建响应
         LoginResponse response = new LoginResponse();
-        response.setId(user.getId());
-        response.setUsername(user.getUsername());
-        response.setUserAccount(user.getUserAccount());
-        response.setAvatarUrl(user.getAvatarUrl());
-        response.setGender(user.getGender());
-        response.setPhone(user.getPhone());
-        response.setEmail(user.getEmail());
-        response.setUserStatus(user.getUserStatus());
-        response.setUserRole(user.getUserRole());
-        response.setTagList(user.getTagList().toArray(new String[0]));
         response.setToken(token);
         response.setSessionId(sessionId); // 返回sessionId
         response.setExpireTime(System.currentTimeMillis() + 24 * 60 * 60 * 1000); // 24小时
@@ -126,9 +118,22 @@ public class UserController {
      * @return 更新结果
      */
     @PostMapping("/update")
-    public int updateUser(@RequestBody UserUpdateRequest user) {
+    public int updateUser(@RequestBody UserUpdateRequest user,
+                          @RequestHeader(value = "X-Session-Id", required = false) String sessionId) {
         try {
-            return userService.updateUser(user);
+            int result = userService.updateUser(user);
+
+            // 如果更新成功且提供了sessionId，则同步更新Redis中的session数据
+            if (result == 1 && sessionId != null && !sessionId.trim().isEmpty()) {
+                // 获取更新后的用户信息
+                User updatedUser = userService.getById(user.getId());
+                if (updatedUser != null) {
+                    // 使用SessionService更新session数据
+                    sessionService.updateSessionUser(sessionId, updatedUser);
+                }
+            }
+
+            return result;
         } catch (Exception e) {
             System.err.println("更新用户信息时发生错误:");
             e.printStackTrace();

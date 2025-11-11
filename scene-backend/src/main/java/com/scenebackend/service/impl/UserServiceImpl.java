@@ -13,13 +13,19 @@ import com.scenebackend.model.dto.UserUpdateRequest;
 import com.scenebackend.service.UserService;
 import com.scenebackend.mapper.UserMapper;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.websocket.Session;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.session.SessionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
-
+import org.springframework.session.SessionRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 /**
@@ -39,6 +45,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         this.userMapper = userMapper;
     }
 
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
     /**
      * 根据用户名查询用户
      * @param username 用户名
@@ -195,6 +203,7 @@ public int updateUser(UserUpdateRequest request) {
     }
     try {
         boolean updateResult = this.updateById(user);
+
         return updateResult ? 1 : 0;
     } catch (Exception e) {
         System.err.println("执行数据库更新时发生错误:");
@@ -278,4 +287,5 @@ public int updateUser(UserUpdateRequest request) {
 
         return userList.stream().map(this::getSafetyUser).collect(Collectors.toList());
     }
+
 }

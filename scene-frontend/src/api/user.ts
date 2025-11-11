@@ -77,10 +77,10 @@ export const getCurrentUser = (): Promise<User> => {
   return request.get('/user/current');
 };
 
-// 更新用户信息
-export const updateUser = (user: Partial<User>) => {
+// 更新用户信息 - 包含sessionId同步更新
+export const updateUser = (user: Partial<User>, sessionId?: string) => {
   console.log('更新用户信息:', user);
-  return request.post('/user/update', user);
+  return request.post('/user/update', user, { params: { sessionId } });
 };
 
 export  const changePassword = (data: {
