@@ -12,7 +12,8 @@ public enum ErrorCode {
     NOT_FOUND_ERROR(40400, "请求数据不存在"),
     FORBIDDEN_ERROR(40300, "禁止访问"),
     SYSTEM_ERROR(50000, "系统内部异常"),
-    OPERATION_ERROR(50001, "操作失败");
+    OPERATION_ERROR(50001, "操作失败"),
+    REDIS_UNAVAILABLE_ERROR(50010, "Redis服务不可用，系统将使用token认证"); // 新增Redis不可用错误码
 
     /**
      * 状态码

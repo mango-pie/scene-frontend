@@ -1,6 +1,8 @@
 package com.scenebackend.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.scenebackend.common.ErrorCode;
+import com.scenebackend.exception.BusinessException;
 import com.scenebackend.model.domain.User;
 import com.scenebackend.model.dto.LoginResponse;
 import com.scenebackend.model.dto.UserUpdateRequest;
@@ -15,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.scenebackend.utils.SessionService;
 import jakarta.servlet.http.HttpSession;
+
 @RestController
 @RequestMapping("/api/user")
 public class UserController {
@@ -64,19 +67,31 @@ public class UserController {
         User user = userService.userLogin(userAccount, userPassword);
 
         if (user == null) {
-            throw new RuntimeException("账号或密码错误");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号或密码错误");
         }
 
         // 生成token
         String token = jwtUtil.generateToken(user.getId(), user.getUsername());
 
-        // 生成session
-        String sessionId = sessionService.createSession(user);
+        String sessionId = null;
+        try {
+            // 尝试创建session，如果Redis不可用会抛出异常
+            sessionId = sessionService.createSession(user);
+        } catch (BusinessException e) {
+            if (e.getCode() == ErrorCode.REDIS_UNAVAILABLE_ERROR.getCode()) {
+                // Redis不可用，只返回token，sessionId设为null
+                System.out.println("Redis不可用，登录时仅返回token");
+                sessionId = null;
+            } else {
+                // 其他异常继续抛出
+                throw e;
+            }
+        }
 
         // 构建响应
         LoginResponse response = new LoginResponse();
         response.setToken(token);
-        response.setSessionId(sessionId); // 返回sessionId
+        response.setSessionId(sessionId); // 如果Redis不可用，sessionId为null
         response.setExpireTime(System.currentTimeMillis() + 24 * 60 * 60 * 1000); // 24小时
 
         return response;
@@ -86,10 +101,6 @@ public class UserController {
      * 用户登出
      * @return 登出结果
      */
-//    @PostMapping("/logout")
-//    public int userLogout() {
-//        return userService.userLogout();
-//    }
     @PostMapping("/logout")
     public int userLogout(@RequestHeader(value = "X-Session-Id", required = false) String sessionId,
                           @RequestHeader(value = "Authorization", required = false) String authHeader) {
@@ -182,15 +193,25 @@ public class UserController {
     @GetMapping("/current")
     public User getCurrentUser(@RequestHeader(value = "X-Session-Id", required = false) String sessionId,
                                @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        // 优先使用session认证
+        // 检查sessionId是否为特殊标识符（Redis不可用）
         if (sessionId != null && !sessionId.trim().isEmpty()) {
-            User user = sessionService.getUserBySession(sessionId);
-            if (user != null) {
-                return user;
+            if (sessionId.equals("redis-unavailable") || sessionId.equals("session-creation-failed")) {
+                System.out.println("检测到Redis不可用特殊标识符，跳过session验证，直接使用token认证");
+                // 跳过session验证，直接进入token认证
+            } else {
+                try {
+                    User user = sessionService.getUserBySession(sessionId);
+                    if (user != null) {
+                        return user;
+                    }
+                } catch (Exception e) {
+                    System.err.println("Session认证失败，将回退到token认证: " + e.getMessage());
+                    // 继续执行token认证
+                }
             }
         }
 
-        // 如果session认证失败，使用token认证
+        // 如果session认证失败或检测到特殊标识符，使用token认证
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             if (jwtUtil.validateToken(token)) {

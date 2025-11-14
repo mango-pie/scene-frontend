@@ -1,5 +1,7 @@
 package com.scenebackend.utils;
 
+import com.scenebackend.common.ErrorCode;
+import com.scenebackend.exception.BusinessException;
 import com.scenebackend.model.domain.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -17,16 +19,39 @@ public class SessionService {
     private RedisTemplate<String, Object> redisTemplate;
 
     /**
+     * 检查Redis是否可用
+     */
+    private boolean isRedisAvailable() {
+        try {
+            redisTemplate.hasKey("test");
+            return true;
+        } catch (Exception e) {
+            System.err.println("Redis不可用，将回退到token认证: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * 创建session
      */
     public String createSession(User user) {
-        String sessionId = java.util.UUID.randomUUID().toString();
-        String sessionKey = SESSION_PREFIX + sessionId;
+        // 如果Redis不可用，抛出业务异常
+        if (!isRedisAvailable()) {
+            throw new BusinessException(ErrorCode.REDIS_UNAVAILABLE_ERROR);
+        }
 
-        // 存储用户信息到session
-        redisTemplate.opsForValue().set(sessionKey, user, SESSION_EXPIRE_HOURS, TimeUnit.HOURS);
+        try {
+            String sessionId = java.util.UUID.randomUUID().toString();
+            String sessionKey = SESSION_PREFIX + sessionId;
 
-        return sessionId;
+            // 存储用户信息到session
+            redisTemplate.opsForValue().set(sessionKey, user, SESSION_EXPIRE_HOURS, TimeUnit.HOURS);
+
+            return sessionId;
+        } catch (Exception e) {
+            System.err.println("创建session失败: " + e.getMessage());
+            throw new BusinessException(ErrorCode.REDIS_UNAVAILABLE_ERROR);
+        }
     }
 
     /**
@@ -37,8 +62,17 @@ public class SessionService {
             return false;
         }
 
-        String sessionKey = SESSION_PREFIX + sessionId;
-        return Boolean.TRUE.equals(redisTemplate.hasKey(sessionKey));
+        if (!isRedisAvailable()) {
+            return false;
+        }
+
+        try {
+            String sessionKey = SESSION_PREFIX + sessionId;
+            return Boolean.TRUE.equals(redisTemplate.hasKey(sessionKey));
+        } catch (Exception e) {
+            System.err.println("验证session失败: " + e.getMessage());
+            return false;
+        }
     }
 
     /**
@@ -49,8 +83,17 @@ public class SessionService {
             return null;
         }
 
-        String sessionKey = SESSION_PREFIX + sessionId;
-        return (User) redisTemplate.opsForValue().get(sessionKey);
+        if (!isRedisAvailable()) {
+            return null;
+        }
+
+        try {
+            String sessionKey = SESSION_PREFIX + sessionId;
+            return (User) redisTemplate.opsForValue().get(sessionKey);
+        } catch (Exception e) {
+            System.err.println("获取session用户信息失败: " + e.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -58,8 +101,16 @@ public class SessionService {
      */
     public void deleteSession(String sessionId) {
         if (sessionId != null && !sessionId.trim().isEmpty()) {
-            String sessionKey = SESSION_PREFIX + sessionId;
-            redisTemplate.delete(sessionKey);
+            if (!isRedisAvailable()) {
+                return;
+            }
+
+            try {
+                String sessionKey = SESSION_PREFIX + sessionId;
+                redisTemplate.delete(sessionKey);
+            } catch (Exception e) {
+                System.err.println("删除session失败: " + e.getMessage());
+            }
         }
     }
 
@@ -68,10 +119,18 @@ public class SessionService {
      */
     public void refreshSession(String sessionId) {
         if (validateSession(sessionId)) {
-            String sessionKey = SESSION_PREFIX + sessionId;
-            User user = getUserBySession(sessionId);
-            if (user != null) {
-                redisTemplate.opsForValue().set(sessionKey, user, SESSION_EXPIRE_HOURS, TimeUnit.HOURS);
+            if (!isRedisAvailable()) {
+                return;
+            }
+
+            try {
+                String sessionKey = SESSION_PREFIX + sessionId;
+                User user = getUserBySession(sessionId);
+                if (user != null) {
+                    redisTemplate.opsForValue().set(sessionKey, user, SESSION_EXPIRE_HOURS, TimeUnit.HOURS);
+                }
+            } catch (Exception e) {
+                System.err.println("刷新session失败: " + e.getMessage());
             }
         }
     }
@@ -81,11 +140,20 @@ public class SessionService {
             return false;
         }
 
-        String sessionKey = SESSION_PREFIX + sessionId;
-        if (Boolean.TRUE.equals(redisTemplate.hasKey(sessionKey))) {
-            redisTemplate.opsForValue().set(sessionKey, user, SESSION_EXPIRE_HOURS, TimeUnit.HOURS);
-            return true;
+        if (!isRedisAvailable()) {
+            return false;
         }
-        return false;
+
+        try {
+            String sessionKey = SESSION_PREFIX + sessionId;
+            if (Boolean.TRUE.equals(redisTemplate.hasKey(sessionKey))) {
+                redisTemplate.opsForValue().set(sessionKey, user, SESSION_EXPIRE_HOURS, TimeUnit.HOURS);
+                return true;
+            }
+            return false;
+        } catch (Exception e) {
+            System.err.println("更新session用户信息失败: " + e.getMessage());
+            return false;
+        }
     }
 }

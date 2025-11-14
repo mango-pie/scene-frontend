@@ -17,16 +17,20 @@ request.interceptors.request.use(
         const sessionId = localStorage.getItem('sessionId');
         const token = localStorage.getItem('token');
 
-        // 优先使用session认证
-        if (sessionId) {
+        // 如果sessionId存在且不为空，优先使用session认证
+        if (sessionId && sessionId.trim() !== '') {
           config.headers['X-Session-Id'] = sessionId;
           console.log('添加sessionId到请求头');
         }
-        // 如果session不存在，使用token认证
-        else if (token) {
+        
+        // 总是添加token到请求头，作为备用认证方式
+        if (token) {
           config.headers.Authorization = `Bearer ${token}`;
           console.log('添加token到请求头');
-        } else {
+        }
+        
+        // 如果两者都不存在
+        if (!sessionId && !token) {
           console.log('未找到认证信息');
         }
       } catch (error) {

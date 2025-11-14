@@ -34,12 +34,24 @@ public class HybridAuthInterceptor implements HandlerInterceptor {
         // 优先检查session认证
         String sessionId = request.getHeader("X-Session-Id");
         if (sessionId != null && !sessionId.trim().isEmpty()) {
-            if (sessionService.validateSession(sessionId)) {
-                // session验证通过，刷新session有效期
-                sessionService.refreshSession(sessionId);
-                return true;
+            // 检查是否是特殊标识，如果是则跳过session验证
+            if ("redis-unavailable".equals(sessionId) || "session-creation-failed".equals(sessionId)) {
+                // 特殊标识表示session不可用，直接进入token验证
+                System.out.println("检测到session不可用标识，跳过session验证，使用token认证");
+            } else {
+                try {
+                    if (sessionService.validateSession(sessionId)) {
+                        // session验证通过，刷新session有效期
+                        sessionService.refreshSession(sessionId);
+                        return true;
+                    }
+                } catch (Exception e) {
+                    System.err.println("session验证过程中发生异常，将回退到token认证: " + e.getMessage());
+                    // 继续执行token验证
+                }
             }
         }
+
 
         // 如果session认证失败，检查token认证
         String authHeader = request.getHeader("Authorization");
@@ -49,6 +61,7 @@ public class HybridAuthInterceptor implements HandlerInterceptor {
                 // token验证通过，将用户ID存入request属性
                 Long userId = jwtUtil.getUserIdFromToken(token);
                 request.setAttribute("userId", userId);
+                System.out.println("token验证通过，用户ID: " + userId);
                 return true;
             }
         }

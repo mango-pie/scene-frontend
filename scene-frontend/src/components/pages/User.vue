@@ -78,23 +78,21 @@ const handleLogin = async () => {
       console.log('Token已保存到localStorage');
     }
 
-    // 保存sessionId到localStorage（新增）
+    // 保存sessionId到localStorage（如果存在）
     if (result.sessionId) {
       localStorage.setItem('sessionId', result.sessionId);
       console.log('SessionId已保存到localStorage');
+    } else {
+      // 如果sessionId为null，清除可能存在的旧sessionId
+      localStorage.removeItem('sessionId');
+      console.log('Redis不可用，仅使用token认证');
     }
-
-    // 不再保存用户信息到localStorage，直接从API获取
-    // localStorage.setItem('currentUser', JSON.stringify(result));
 
     // 直接设置登录状态
     isLoggedIn.value = true;
     userInfo.value = result;
 
-    showToast('登录成功');
     await checkLoginStatus();
-    // 可以跳转到首页或保持当前页面
-    // router.push('/');
   } catch (error) {
     showToast('登录失败，请检查账号密码或网络连接');
     console.error('登录错误:', error);
