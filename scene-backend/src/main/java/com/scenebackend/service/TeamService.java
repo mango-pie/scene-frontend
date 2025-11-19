@@ -2,6 +2,9 @@ package com.scenebackend.service;
 
 import com.scenebackend.model.domain.Team;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.scenebackend.model.dto.TeamQuery;
+
+import java.util.List;
 
 /**
 * @author 芒果派
@@ -9,5 +12,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 * @createDate 2025-10-19 20:13:38
 */
 public interface TeamService extends IService<Team> {
+
+    List<Team> searchTeams(TeamQuery teamQuery);
 
 }
