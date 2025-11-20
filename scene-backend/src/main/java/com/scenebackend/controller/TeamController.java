@@ -7,10 +7,7 @@ import com.scenebackend.model.dto.TeamQuery;
 import com.scenebackend.service.TeamService;
 import com.scenebackend.model.domain.Team;
 import jakarta.annotation.Resource;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -33,8 +30,8 @@ public class TeamController {
         return team;
     }
 
-    @PostMapping("/delete")
-    public boolean deleteTeam(@RequestBody long id) {
+    @DeleteMapping("/delete/{id}")
+    public boolean deleteTeam(@PathVariable long id) {
         Team team = teamService.getById(id);
         if(team == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "Team not found");
@@ -58,8 +55,8 @@ public class TeamController {
         return true;
     }
 
-    @PostMapping("/get")
-    public Team getTeam(@RequestBody long id) {
+    @GetMapping("/get/{id}")
+    public Team getTeam(@PathVariable long id) {
         Team team = teamService.getById(id);
         if(team == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "Team not found");

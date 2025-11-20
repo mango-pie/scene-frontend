@@ -20,5 +20,6 @@ public class TeamQuery {
     private String description;
     private Integer maxNum;
     private Long userId;
-
+    private Integer status; // 队伍状态（-1-全部，0-公开，1-私有，2-加密）
+    private String captainName; // 队长名称
 }

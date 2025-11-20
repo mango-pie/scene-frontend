@@ -68,4 +68,9 @@ public class Team {
      * 是否删除
      */
     private Integer isDelete;
+
+    /**
+     * 队伍头像
+     */
+    private String avatarUrl;
 }

@@ -36,6 +36,10 @@ public interface UserService extends IService<User> {
      * 获取安全的用户信息（隐藏敏感信息）
      */
     User getSafetyUser(User originUser);
+    /**
+     * 根据用户名获取用户
+     */
+    User getUserByName(String username);
 
     /**
      * 用户注销

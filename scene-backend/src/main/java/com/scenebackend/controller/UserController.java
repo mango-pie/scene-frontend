@@ -174,6 +174,11 @@ public class UserController {
         return userService.getUserById(id);
     }
 
+    @GetMapping("/name/{name}")
+    public User getUserByName(@PathVariable String name) {
+        return userService.getUserByName(name);
+    }
+
     /**
      * 更新用户状态
      * @param id 用户ID

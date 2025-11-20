@@ -1,5 +1,6 @@
 package com.scenebackend.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -288,4 +289,12 @@ public int updateUser(UserUpdateRequest request) {
         return userList.stream().map(this::getSafetyUser).collect(Collectors.toList());
     }
 
+    @Override
+    public User getUserByName(String username) {
+        if (username == null || username.isEmpty()) {
+            return null;
+        }
+        User user = userMapper.selectOne(new LambdaQueryWrapper<User>().like(User::getUsername, username));
+        return this.getSafetyUser(user);
+    }
 }

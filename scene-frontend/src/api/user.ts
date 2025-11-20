@@ -90,3 +90,8 @@ export  const changePassword = (data: {
 }) => {
   return request.post('/user/changePassword',{}, { params: data });
 };
+
+// 根据用户ID查询用户信息
+export const getUserById = (userId: number): Promise<User> => {
+  return request.get(`/user/${userId}`);
+};
