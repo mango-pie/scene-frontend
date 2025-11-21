@@ -34,8 +34,10 @@ public class CorsConfig implements WebMvcConfigurer {
                         "/swagger-resources/**",
                         "/swagger-ui.html/**",
                         "/swagger-ui/index.html",
-                        "/doc.html"
+                        "/doc.html",
 
+                        // 图片上传路径
+                        "/uploads/**"
                 );
     }
 

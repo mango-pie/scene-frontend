@@ -20,13 +20,11 @@ request.interceptors.request.use(
         // 如果sessionId存在且不为空，优先使用session认证
         if (sessionId && sessionId.trim() !== '') {
           config.headers['X-Session-Id'] = sessionId;
-          console.log('添加sessionId到请求头');
         }
         
         // 总是添加token到请求头，作为备用认证方式
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
-          console.log('添加token到请求头');
         }
         
         // 如果两者都不存在

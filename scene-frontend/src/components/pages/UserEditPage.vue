@@ -1,7 +1,7 @@
 <script setup>
 import {computed, onMounted, ref} from 'vue';
-import {Button, Cell, CellGroup, Divider, Image as VanImage, showToast, Tag} from 'vant';
-import {changePassword, getCurrentUser, updateUser, userLogout} from '../../api/user.js'
+import {Button, Cell, CellGroup, Divider, Image as VanImage, showToast, showLoadingToast, Tag} from 'vant';
+import {changePassword, getCurrentUser, updateUser, userLogout,updateUserAvatar} from '../../api/user.js'
 import {searchTags} from '../../api/tag.js'
 import {convertTagsToTree} from '../../utils/tag.js'
 import {useRouter} from "vue-router";
@@ -32,6 +32,119 @@ const formData = ref({
   confirmPassword: '',
   tags: [] // 初始化标签数组
 });
+
+
+const showImageEditPopup = ref(false);
+const imageFileList = ref([]);
+const imageForm = ref({
+  avatarUrl: '' // 用于存储图片URL
+});
+
+// 打开图片修改弹窗时初始化数据
+const openImageEditPopup = (currentUrl) => {
+  imageForm.value.avatarUrl = currentUrl;
+  // 初始化已有的图片预览
+  if (currentUrl) {
+    imageFileList.value = [{ url: currentUrl }];
+  } else {
+    imageFileList.value = [];
+  }
+  showImageEditPopup.value = true;
+};
+
+// 处理图片上传
+// const handleImageUpload = async (file) => {
+//   showLoadingToast('上传中...');
+//   file.status = 'uploading';
+//
+//   try {
+//     const formData = new FormData();
+//     formData.append('file', file.file);
+//
+//     // 调用后端上传接口
+//     const response = await updateUserAvatar(formData, {
+//       headers: {
+//         'Content-Type': 'multipart/form-data'
+//       }
+//     });
+//
+//     if (response.success && response.data) {
+//       imageForm.value.avatarUrl = response.data;
+//       file.status = 'done';
+//       showToast('上传成功');
+//     } else {
+//       throw new Error('上传失败');
+//     }
+//   } catch (error) {
+//     file.status = 'failed';
+//     showToast('上传失败，请重试');
+//     console.error('图片上传错误:', error);
+//   }
+// };
+// 处理图片上传
+const handleImageUpload = async (file) => {
+  showLoadingToast('上传中...');
+  file.status = 'uploading';
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file.file);
+
+    // 调用后端上传接口 - 移除错误的headers参数
+    const response = await updateUserAvatar(formData);
+
+    if (response && response.data) {
+      imageForm.value.avatarUrl = response.data;
+      file.status = 'done';
+      showToast('上传成功');
+    } else {
+      throw new Error('上传失败');
+    }
+  } catch (error) {
+    file.status = 'failed';
+    showToast('上传失败，请重试');
+    console.error('图片上传错误:', error);
+  }
+};
+
+// 处理图片删除
+const handleImageDelete = () => {
+  imageForm.value.avatarUrl = '';
+  showToast('已移除图片');
+};
+
+// 保存图片修改
+const handleSaveImage = async () => {
+  try {
+    // 调用后端接口保存图片URL（根据实际业务调整）
+    // 示例：如果是修改用户头像
+    // await updateUser({ avatarUrl: imageForm.value.avatarUrl });
+    // 如果是修改队伍头像
+    // await updateTeam({ id: currentTeamId, avatarUrl: imageForm.value.avatarUrl });
+
+    showToast('图片修改成功');
+    showImageEditPopup.value = false;
+    // 刷新数据
+    await fetchUserInfo();
+  } catch (error) {
+    showToast('保存失败，请重试');
+    console.error('保存图片失败:', error);
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // 标签搜索相关变量
 const tagSearchInput = ref(''); // 标签搜索输入框
@@ -768,29 +881,71 @@ onMounted(() => {
     >
       <div class="popup-content">
         <h3 class="popup-title">更换头像</h3>
-        <div class="avatar-upload-container">
-          <div class="current-avatar">
-            <VanImage
-                round
-                size="100"
-                fit="cover"
-                :src="userInfo?.avatarUrl || 'https://img.yzcdn.cn/vant/default-user-image.png'"
-                class="preview-avatar-img"
-            />
-          </div>
-          <div class="upload-options">
-            <van-button round type="primary" block>
-              从相册选择
+<!--        <div class="avatar-upload-container">-->
+<!--          <div class="current-avatar">-->
+<!--            <VanImage-->
+<!--                round-->
+<!--                size="100"-->
+<!--                fit="cover"-->
+<!--                :src="userInfo?.avatarUrl || 'https://img.yzcdn.cn/vant/default-user-image.png'"-->
+<!--                class="preview-avatar-img"-->
+<!--            />-->
+<!--          </div>-->
+<!--          <div class="upload-options">-->
+<!--            <van-button round type="primary" block>-->
+<!--              从相册选择-->
+<!--            </van-button>-->
+<!--            <van-button round type="default" block style="margin-top: 10px;">-->
+<!--              拍摄照片-->
+<!--            </van-button>-->
+<!--          </div>-->
+<!--        </div>-->
+<!--        <div class="popup-buttons">-->
+<!--          <van-button round type="default" @click="closePopup('avatar')" style="margin-right: 10px;">取消</van-button>-->
+<!--          <van-button round type="primary" @click="handleSave('avatar')">确认更换</van-button>-->
+<!--        </div>-->
+        <van-form @submit="handleSaveImage">
+          <van-cell-group inset>
+            <!-- 替换原有的URL输入框或新增上传区域 -->
+            <van-cell title="图片">
+              <template #default>
+                <van-uploader
+                    v-model="imageFileList"
+                    :max-count="1"
+                    :after-read="handleImageUpload"
+                    accept="image/*"
+                    upload-text="从相册选择"
+                    @delete="handleImageDelete"
+                >
+                  <!-- 预览已选中的图片 -->
+                  <template #preview="{ file }">
+                    <van-image
+                        :src="file.url"
+                        width="100"
+                        height="100"
+                        fit="cover"
+                        class="image-preview"
+                    />
+                  </template>
+                </van-uploader>
+              </template>
+            </van-cell>
+
+            <!-- 保留可选的URL输入框（供手动输入） -->
+<!--            <van-field-->
+<!--                v-model="imageForm.avatarUrl"-->
+<!--                label="图片URL"-->
+<!--                placeholder="也可直接输入图片链接"-->
+<!--                type="url"-->
+<!--            />-->
+          </van-cell-group>
+
+          <div style="margin: 16px;">
+            <van-button round block type="primary" native-type="submit">
+              保存修改
             </van-button>
-            <van-button round type="default" block style="margin-top: 10px;">
-              拍摄照片
-            </van-button>
           </div>
-        </div>
-        <div class="popup-buttons">
-          <van-button round type="default" @click="closePopup('avatar')" style="margin-right: 10px;">取消</van-button>
-          <van-button round type="primary" @click="handleSave('avatar')">确认更换</van-button>
-        </div>
+        </van-form>
       </div>
     </van-popup>
 
@@ -876,6 +1031,22 @@ onMounted(() => {
 </template>
 
 <style scoped>
+
+.image-preview {
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+/* 调整上传组件与其他表单元素的间距 */
+:deep(.van-uploader) {
+  margin-top: 8px;
+}
+
+/* 确保弹窗内图片预览不溢出 */
+.popup-content {
+  overflow-y: auto;
+}
+
 .user-profile-page {
   background-color: #f8f8f8;
   min-height: 100vh;

@@ -95,3 +95,7 @@ export  const changePassword = (data: {
 export const getUserById = (userId: number): Promise<User> => {
   return request.get(`/user/${userId}`);
 };
+
+export const updateUserAvatar = (data: FormData) => {
+  return request.post('/upload/image', data);
+};
