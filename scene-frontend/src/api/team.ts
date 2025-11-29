@@ -54,3 +54,17 @@ export const getTeam = (id: number) => {
 export const listTeams = (query: TeamQuery) => {
     return request.post('/team/list', query);
 };
+
+export const joinTeam = (team: Team,sessionId?: string) => {
+    console.log(team);
+    return request.post(`/user-team/join`, team,{ params: { sessionId } });
+}
+export const quitTeam = (team: Team, sessionId?: string) => {
+    return request.delete(`/user-team/quit`, {
+        data: team,  // 将team对象放在配置对象的data属性中
+        params: { sessionId }
+    });
+}
+export const myTeams = (sessionId?: string) => {
+    return request.get(`/user-team/my-teams`,{ params: { sessionId } });
+}

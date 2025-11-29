@@ -41,28 +41,51 @@ request.interceptors.request.use(
     }
 );
 
+import { BaseResponse } from '../model/BaseResponse';
+
 request.interceptors.response.use(
     (response) => {
-      // 只返回响应数据
+      const baseResponse: BaseResponse = response.data;
+      
+      // 检查是否为BaseResponse格式
+      if ('code' in baseResponse && 'message' in baseResponse && 'data' in baseResponse) {
+        // 成功响应（假设code为0表示成功）
+        if (baseResponse.code === 0) {
+          // 只返回data部分，保持现有代码兼容性
+          return baseResponse.data;
+        } else {
+          // 业务错误，抛出异常供上层处理
+          const error = new Error(baseResponse.message || '请求失败');
+          // 将错误码和详情附加到错误对象
+          (error as any).code = baseResponse.code;
+          (error as any).detail = baseResponse.data;
+          return Promise.reject(error);
+        }
+      }
+      
+      // 兼容非BaseResponse格式的响应
       return response.data;
     },
     (error) => {
-      // 处理错误情况
+      // 处理HTTP错误
       console.error('API请求错误:', error);
 
-      // 处理认证过期或无效的情况
       if (error.response) {
         const { status, data } = error.response;
+        
+        // 如果后端返回了BaseResponse格式的错误
+        if (data && 'code' in data && 'message' in data) {
+          const errorMsg = data.message || `请求失败(${status})`;
+          const errorWithDetails = new Error(errorMsg);
+          (errorWithDetails as any).code = data.code;
+          (errorWithDetails as any).detail = data.data;
+          return Promise.reject(errorWithDetails);
+        }
 
         if (status === 401) {
-          // 认证无效或过期
           console.error('认证无效或已过期，请重新登录');
-          // 清除所有认证信息
           localStorage.removeItem('token');
           localStorage.removeItem('sessionId');
-          // localStorage.removeItem('currentUser');
-
-          // 可以在这里跳转到登录页面
           if (window.location.pathname !== '/user') {
             window.location.href = '/user';
           }
@@ -73,7 +96,6 @@ request.interceptors.response.use(
         }
       }
 
-      // 处理网络错误
       if (error.code === 'ERR_NETWORK') {
         console.error('网络错误，请检查后端服务是否正常运行');
       }

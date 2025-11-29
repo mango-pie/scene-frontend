@@ -5,6 +5,7 @@ import {changePassword, getCurrentUser, updateUser, userLogout,updateUserAvatar}
 import {searchTags} from '../../api/tag.js'
 import {convertTagsToTree} from '../../utils/tag.js'
 import {useRouter} from "vue-router";
+import {handleApiError} from "../../utils/errorHandler.js";
 // 用户信息数据
 const userInfo = ref(null);
 const router = useRouter();
@@ -52,35 +53,6 @@ const openImageEditPopup = (currentUrl) => {
   showImageEditPopup.value = true;
 };
 
-// 处理图片上传
-// const handleImageUpload = async (file) => {
-//   showLoadingToast('上传中...');
-//   file.status = 'uploading';
-//
-//   try {
-//     const formData = new FormData();
-//     formData.append('file', file.file);
-//
-//     // 调用后端上传接口
-//     const response = await updateUserAvatar(formData, {
-//       headers: {
-//         'Content-Type': 'multipart/form-data'
-//       }
-//     });
-//
-//     if (response.success && response.data) {
-//       imageForm.value.avatarUrl = response.data;
-//       file.status = 'done';
-//       showToast('上传成功');
-//     } else {
-//       throw new Error('上传失败');
-//     }
-//   } catch (error) {
-//     file.status = 'failed';
-//     showToast('上传失败，请重试');
-//     console.error('图片上传错误:', error);
-//   }
-// };
 // 处理图片上传
 const handleImageUpload = async (file) => {
   showLoadingToast('上传中...');
@@ -131,19 +103,6 @@ const handleSaveImage = async () => {
     console.error('保存图片失败:', error);
   }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 // 标签搜索相关变量
@@ -212,36 +171,33 @@ const formattedCreateTime = computed(() => {
   const date = new Date(userInfo.value.createTime);
   return date.toLocaleString('zh-CN');
 });
-
 const fetchUserInfo = async () => {
   try {
     const user = await getCurrentUser();
-    if (user) {
-      userInfo.value = user;
-      // 初始化表单数据
-      formData.value = {
-        account: user.userAccount || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        gender: user.gender,
-        username: user.username || '',
-        plantCode: user.plantCode || '',
-        oldPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-        tags: user.tagList ? [...user.tagList] : [] // 正确初始化标签
-      };
-      activeIds.value = formData.value.tags;
-    } else {
-      console.error('获取用户信息失败：用户未登录');
-      showToast('用户未登录，请重新登录');
+    // 这里可以直接使用user，因为拦截器已经返回了data部分
+    userInfo.value = user;
+    // 初始化表单数据
+    formData.value = {
+      account: user.userAccount || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      gender: user.gender,
+      username: user.username || '',
+      plantCode: user.plantCode || '',
+      oldPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+      tags: user.tagList ? [...user.tagList] : []
+    };
+    activeIds.value = formData.value.tags;
+  } catch (error) {
+    handleApiError(error)
+    // 显示更详细的错误信息
+    showToast(error.message || '获取用户信息失败，请检查网络连接');
+    // 可以根据错误码进行特殊处理
+    if (error.code === 401) {
       router.push('/user');
     }
-  } catch (error) {
-    console.error('获取用户信息失败:', error);
-    showToast('获取用户信息失败，请检查网络连接');
-    // 如果获取失败，跳转到登录页面
-    router.push('/user');
   }
 };
 
@@ -663,7 +619,7 @@ onMounted(() => {
         </div>
         <div class="action-buttons">
           <van-cell title="更换头像" is-link @click="() => { closePopup(); openEditPopup('avatar'); }"></van-cell>
-          <van-cell title="关闭" is-link @click="closePopup"></van-cell>
+          <van-cell title="关闭" is-link @click="() => { closePopup(); }"></van-cell>
         </div>
       </div>
     </van-popup>
@@ -881,29 +837,6 @@ onMounted(() => {
     >
       <div class="popup-content">
         <h3 class="popup-title">更换头像</h3>
-<!--        <div class="avatar-upload-container">-->
-<!--          <div class="current-avatar">-->
-<!--            <VanImage-->
-<!--                round-->
-<!--                size="100"-->
-<!--                fit="cover"-->
-<!--                :src="userInfo?.avatarUrl || 'https://img.yzcdn.cn/vant/default-user-image.png'"-->
-<!--                class="preview-avatar-img"-->
-<!--            />-->
-<!--          </div>-->
-<!--          <div class="upload-options">-->
-<!--            <van-button round type="primary" block>-->
-<!--              从相册选择-->
-<!--            </van-button>-->
-<!--            <van-button round type="default" block style="margin-top: 10px;">-->
-<!--              拍摄照片-->
-<!--            </van-button>-->
-<!--          </div>-->
-<!--        </div>-->
-<!--        <div class="popup-buttons">-->
-<!--          <van-button round type="default" @click="closePopup('avatar')" style="margin-right: 10px;">取消</van-button>-->
-<!--          <van-button round type="primary" @click="handleSave('avatar')">确认更换</van-button>-->
-<!--        </div>-->
         <van-form @submit="handleSaveImage">
           <van-cell-group inset>
             <!-- 替换原有的URL输入框或新增上传区域 -->
@@ -931,13 +864,6 @@ onMounted(() => {
               </template>
             </van-cell>
 
-            <!-- 保留可选的URL输入框（供手动输入） -->
-<!--            <van-field-->
-<!--                v-model="imageForm.avatarUrl"-->
-<!--                label="图片URL"-->
-<!--                placeholder="也可直接输入图片链接"-->
-<!--                type="url"-->
-<!--            />-->
           </van-cell-group>
 
           <div style="margin: 16px;">
@@ -996,21 +922,6 @@ onMounted(() => {
                   </van-tag>
                 </van-col>
               </van-row>
-<!--              <div class="tags-scroll-container">-->
-<!--                <van-tag-->
-<!--                    v-for="(tag, index) in formData.tags"-->
-<!--                    :key="index"-->
-<!--                    type="primary"-->
-<!--                    closable-->
-<!--                    @close="removeTag(index)"-->
-<!--                    class="selected-tag"-->
-<!--                >-->
-<!--                  {{ tag }}-->
-<!--                </van-tag>-->
-<!--                <div v-if="formData.tags.length === 0" class="no-tags-hint">-->
-<!--                  暂无已选标签-->
-<!--                </div>-->
-<!--              </div>-->
             </div>
 
             <div class="tag-tips">

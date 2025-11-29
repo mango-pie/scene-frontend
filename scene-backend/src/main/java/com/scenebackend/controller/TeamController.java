@@ -3,9 +3,12 @@ package com.scenebackend.controller;
 
 import com.scenebackend.common.ErrorCode;
 import com.scenebackend.exception.BusinessException;
+import com.scenebackend.mapper.TeamMapper;
+import com.scenebackend.model.dto.BaseResponse;
 import com.scenebackend.model.dto.TeamQuery;
 import com.scenebackend.service.TeamService;
 import com.scenebackend.model.domain.Team;
+import com.scenebackend.service.UserTeamService;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,61 +21,61 @@ public class TeamController {
     private TeamService teamService;
 
     @PostMapping("/add")
-    public Team addTeam(@RequestBody Team team) {
+    public BaseResponse<Team> addTeam(@RequestBody Team team) {
         if(team == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "Team is null");
+           throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍为空");
         }
 
         boolean result = teamService.save(team);
         if(!result) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "Add team failed");
+           throw new BusinessException(ErrorCode.OPERATION_ERROR, "添加队伍失败");
         }
-        return team;
+        return BaseResponse.success(team);
     }
 
     @DeleteMapping("/delete/{id}")
-    public boolean deleteTeam(@PathVariable long id) {
+    public BaseResponse<Boolean> deleteTeam(@PathVariable long id) {
         Team team = teamService.getById(id);
         if(team == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "Team not found");
+            throw new BusinessException(ErrorCode.TEAM_NOT_FOUND, "队伍不存在");
         }
         boolean result = teamService.removeById(id);
         if(!result) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "Delete team failed");
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "删除队伍失败");
         }
-       return true;
+        return BaseResponse.success(true);
     }
 
     @PostMapping("/update")
-    public boolean updateTeam(@RequestBody Team team) {
+    public BaseResponse<Boolean> updateTeam(@RequestBody Team team) {
         if(team == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "Team is null");
         }
         boolean result = teamService.updateById(team);
         if(!result) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "Update team failed");
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "更新队伍失败");
         }
-        return true;
+        return BaseResponse.success(true);
     }
 
     @GetMapping("/get/{id}")
-    public Team getTeam(@PathVariable long id) {
+    public BaseResponse<Team> getTeam(@PathVariable long id) {
         Team team = teamService.getById(id);
         if(team == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "Team not found");
+            throw new BusinessException(ErrorCode.TEAM_NOT_FOUND, "队伍不存在");
         }
-        return team;
+        return BaseResponse.success(team);
     }
 
     @PostMapping("/list")
-    public List<Team> listTeams(@RequestBody TeamQuery query) {
+    public BaseResponse<List<Team>> listTeams(@RequestBody TeamQuery query) {
         if(query == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "Query is null");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "查询参数为空");
         }
         List<Team> teams = teamService.searchTeams(query);
         if(teams == null) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "List teams failed");
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取队伍列表失败");
         }
-        return teams;
+        return BaseResponse.success(teams);
     }
 }

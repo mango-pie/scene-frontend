@@ -2,9 +2,13 @@ package com.scenebackend.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.scenebackend.model.domain.UserTeam;
+import com.scenebackend.service.UserService;
 import com.scenebackend.service.UserTeamService;
 import com.scenebackend.mapper.UserTeamMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.Date;
 
 /**
 * @author 芒果派

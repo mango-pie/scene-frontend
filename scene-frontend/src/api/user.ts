@@ -1,5 +1,6 @@
 import request from './request';
 import {showToast} from "vant";
+import { BaseResponse } from '../model/BaseResponse';
 
 // 用户类型定义
 interface User {
@@ -44,13 +45,42 @@ export const userRegister = (data: {
   return request.post('/user/register', {}, { params: data });
 };
 
-// 用户登录 - 修改为使用查询参数传递
+// 用户登录
 export const userLogin = (data: {
   userAccount: string;
   userPassword: string;
 }): Promise<LoginResponse> => {
   return request.post('/user/login', {}, { params: data });
 };
+
+// 获取当前登录用户
+export const getCurrentUser = (): Promise<User> => {
+  return request.get('/user/current');
+};
+
+// 根据用户ID查询用户信息
+export const getUserById = (userId: number): Promise<User> => {
+  return request.get(`/user/${userId}`);
+};
+
+export const updateUserAvatar = (data: FormData) => {
+  return request.post('/upload/image', data);
+};
+
+// 更新用户信息 - 包含sessionId同步更新
+export const updateUser = (user: Partial<User>, sessionId?: string) => {
+  console.log('更新用户信息:', user);
+  return request.post('/user/update', user, { params: { sessionId } });
+};
+
+export  const changePassword = (data: {
+  oldPassword: string;
+  newPassword: string;
+  userId: number;
+}) => {
+  return request.post('/user/changePassword',{}, { params: data });
+};
+
 
 // 用户登出
 export const userLogout = () => {
@@ -70,32 +100,4 @@ export const searchUsersByTags = (tagList: string[]) => {
 // 获取用户列表（分页）
 export const getUserList = (pageNum: number, pageSize: number) => {
   return request.get('/user/list', { params: { pageNum, pageSize } });
-};
-
-// 获取当前登录用户
-export const getCurrentUser = (): Promise<User> => {
-  return request.get('/user/current');
-};
-
-// 更新用户信息 - 包含sessionId同步更新
-export const updateUser = (user: Partial<User>, sessionId?: string) => {
-  console.log('更新用户信息:', user);
-  return request.post('/user/update', user, { params: { sessionId } });
-};
-
-export  const changePassword = (data: {
-  oldPassword: string;
-  newPassword: string;
-  userId: number;
-}) => {
-  return request.post('/user/changePassword',{}, { params: data });
-};
-
-// 根据用户ID查询用户信息
-export const getUserById = (userId: number): Promise<User> => {
-  return request.get(`/user/${userId}`);
-};
-
-export const updateUserAvatar = (data: FormData) => {
-  return request.post('/upload/image', data);
 };

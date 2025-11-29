@@ -1,6 +1,8 @@
 package com.scenebackend.controller;
 
+import com.scenebackend.exception.BusinessException;
 import com.scenebackend.model.domain.User;
+import com.scenebackend.model.dto.BaseResponse;
 import com.scenebackend.model.dto.ImageUploadResponse;
 import com.scenebackend.service.ImageUploadService;
 import com.scenebackend.service.UserService;
@@ -9,7 +11,7 @@ import com.scenebackend.utils.SessionService;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
+import com.scenebackend.common.ErrorCode;
 /**
  * 图片上传控制器
  */
@@ -33,13 +35,17 @@ public class ImageUploadController {
      * 上传图片
      */
     @PostMapping("/image")
-    public ImageUploadResponse uploadImage(@RequestParam("file") MultipartFile file,
-                                           @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
-                                           @RequestHeader(value = "Authorization", required = false) String authHeader) {
+    public BaseResponse<ImageUploadResponse> uploadImage(@RequestParam("file") MultipartFile file,
+                                                         @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
+                                                         @RequestHeader(value = "Authorization", required = false) String authHeader) {
         // 获取当前登录用户ID
-        Long userId = getCurrentUserId(sessionId, authHeader);
+        BaseResponse<Long> userIdResponse = getCurrentUserId(sessionId, authHeader);
+        if (userIdResponse == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR, "未登录，无法上传图片");
+        }
+        Long userId = userIdResponse.getData();
         if (userId == null) {
-            return ImageUploadResponse.error("未登录，无法上传图片");
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR, "未登录，无法上传图片");
         }
 
         // 只调用一次uploadImage方法
@@ -54,40 +60,44 @@ public class ImageUploadController {
             }
         }
 
-        return response;
+        return BaseResponse.success(response);
     }
 
     /**
      * 删除图片
      */
     @DeleteMapping("/image")
-    public ImageUploadResponse deleteImage(@RequestParam String filename,
-                                           @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
-                                           @RequestHeader(value = "Authorization", required = false) String authHeader) {
+    public BaseResponse<ImageUploadResponse> deleteImage(@RequestParam String filename,
+                                                         @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
+                                                         @RequestHeader(value = "Authorization", required = false) String authHeader) {
         // 获取当前登录用户ID
-        Long userId = getCurrentUserId(sessionId, authHeader);
+        BaseResponse<Long> userIdResponse = getCurrentUserId(sessionId, authHeader);
+        if (userIdResponse == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR, "未登录，无法删除图片");
+        }
+        Long userId = userIdResponse.getData();
         if (userId == null) {
-            return ImageUploadResponse.error("未登录，无法删除图片");
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR, "未登录，无法删除图片");
         }
 
         boolean result = imageUploadService.deleteImage(filename, userId);
         if (result) {
-            return ImageUploadResponse.success("", filename);
+            return BaseResponse.success(ImageUploadResponse.success("", filename));
         } else {
-            return ImageUploadResponse.error("删除图片失败");
+           throw new BusinessException(ErrorCode.OPERATION_ERROR, "删除图片失败");
         }
     }
 
     /**
      * 获取当前登录用户ID
      */
-    private Long getCurrentUserId(String sessionId, String authHeader) {
+    private BaseResponse<Long> getCurrentUserId(String sessionId, String authHeader) {
         // 优先从session获取
         if (sessionId != null && !sessionId.trim().isEmpty()) {
             try {
                 com.scenebackend.model.domain.User user = sessionService.getUserBySession(sessionId);
                 if (user != null) {
-                    return user.getId();
+                    return BaseResponse.success(user.getId());
                 }
             } catch (Exception e) {
                 // 忽略异常，尝试token验证
@@ -98,8 +108,10 @@ public class ImageUploadController {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             if (jwtUtil.validateToken(token)) {
-                return jwtUtil.getUserIdFromToken(token);
+                return BaseResponse.success(jwtUtil.getUserIdFromToken(token));
             }
+            else
+              throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR, "未登录，无法删除图片");
         }
 
         return null;

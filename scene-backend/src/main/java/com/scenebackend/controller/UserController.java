@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.scenebackend.common.ErrorCode;
 import com.scenebackend.exception.BusinessException;
 import com.scenebackend.model.domain.User;
+import com.scenebackend.model.dto.BaseResponse;
 import com.scenebackend.model.dto.LoginResponse;
 import com.scenebackend.model.dto.UserUpdateRequest;
 import com.scenebackend.service.UserService;
@@ -34,8 +35,8 @@ public class UserController {
      * @return 用户列表
      */
     @GetMapping("/search")
-    public List<User> searchUserByName(@RequestParam String username) {
-        return userService.searchUserByName(username);
+    public BaseResponse<List<User>> searchUserByName(@RequestParam String username) {
+        return BaseResponse.success(userService.searchUserByName(username));
     }
 
     /**
@@ -46,10 +47,10 @@ public class UserController {
      * @return 用户ID
      */
     @PostMapping("/register")
-    public long userRegister(@RequestParam String userAccount,
+    public BaseResponse<Long> userRegister(@RequestParam String userAccount,
                              @RequestParam String userPassword,
                              @RequestParam String checkPassword) {
-        return userService.userRegister(userAccount, userPassword, checkPassword);
+        return BaseResponse.success(userService.userRegister(userAccount, userPassword, checkPassword));
     }
 
     /**
@@ -59,7 +60,7 @@ public class UserController {
      * @return 用户信息
      */
     @PostMapping("/login")
-    public LoginResponse login(@RequestParam String userAccount,
+    public BaseResponse<LoginResponse> login(@RequestParam String userAccount,
                                @RequestParam String userPassword,
                                HttpServletRequest request) {
 
@@ -94,7 +95,7 @@ public class UserController {
         response.setSessionId(sessionId); // 如果Redis不可用，sessionId为null
         response.setExpireTime(System.currentTimeMillis() + 24 * 60 * 60 * 1000); // 24小时
 
-        return response;
+        return BaseResponse.success(response);
     }
 
     /**
@@ -102,7 +103,7 @@ public class UserController {
      * @return 登出结果
      */
     @PostMapping("/logout")
-    public int userLogout(@RequestHeader(value = "X-Session-Id", required = false) String sessionId,
+    public BaseResponse<Integer> userLogout(@RequestHeader(value = "X-Session-Id", required = false) String sessionId,
                           @RequestHeader(value = "Authorization", required = false) String authHeader) {
         // 清除session
         if (sessionId != null && !sessionId.trim().isEmpty()) {
@@ -110,7 +111,7 @@ public class UserController {
         }
 
         // 清除token（在前端清除localStorage中的token）
-        return userService.userLogout();
+        return BaseResponse.success(userService.userLogout());
     }
 
     /**
@@ -119,8 +120,8 @@ public class UserController {
      * @return 用户列表
      */
     @GetMapping("/search/tags")
-    public List<User> searchUsersByTags(@RequestParam List<String> tagList) {
-        return userService.searchUsersByTags(tagList);
+    public BaseResponse<List<User>> searchUsersByTags(@RequestParam List<String> tagList) {
+        return BaseResponse.success(userService.searchUsersByTags(tagList));
     }
 
     /**
@@ -129,7 +130,7 @@ public class UserController {
      * @return 更新结果
      */
     @PostMapping("/update")
-    public int updateUser(@RequestBody UserUpdateRequest user,
+    public BaseResponse<Integer> updateUser(@RequestBody UserUpdateRequest user,
                           @RequestHeader(value = "X-Session-Id", required = false) String sessionId) {
         try {
             int result = userService.updateUser(user);
@@ -144,11 +145,11 @@ public class UserController {
                 }
             }
 
-            return result;
+            return BaseResponse.success(result);
         } catch (Exception e) {
             System.err.println("更新用户信息时发生错误:");
             e.printStackTrace();
-            return -1; // 返回错误代码
+            throw new BusinessException(ErrorCode.UPDATE_ERROR, "更新用户信息时发生错误"); // 返回错误代码
         }
     }
 
@@ -159,9 +160,9 @@ public class UserController {
      * @return 分页用户列表
      */
     @GetMapping("/list")
-    public Page<User> getUserList(@RequestParam int pageNum,
+    public BaseResponse<Page<User>> getUserList(@RequestParam int pageNum,
                                   @RequestParam int pageSize) {
-        return userService.getUserList(pageNum, pageSize);
+        return BaseResponse.success(userService.getUserList(pageNum, pageSize));
     }
 
     /**
@@ -170,13 +171,13 @@ public class UserController {
      * @return 用户信息
      */
     @GetMapping("/{id}")
-    public User getUserById(@PathVariable Long id) {
-        return userService.getUserById(id);
+    public BaseResponse<User> getUserById(@PathVariable Long id) {
+        return BaseResponse.success(userService.getUserById(id));
     }
 
     @GetMapping("/name/{name}")
-    public User getUserByName(@PathVariable String name) {
-        return userService.getUserByName(name);
+    public BaseResponse<User> getUserByName(@PathVariable String name) {
+        return BaseResponse.success(userService.getUserByName(name));
     }
 
     /**
@@ -186,9 +187,9 @@ public class UserController {
      * @return 更新结果
      */
     @PostMapping("/status")
-    public int updateUserStatus(@RequestParam Long id,
+    public BaseResponse<Integer> updateUserStatus(@RequestParam Long id,
                                 @RequestParam Integer status) {
-        return userService.updateUserStatus(id, status);
+        return BaseResponse.success(userService.updateUserStatus(id, status));
     }
 
     /**
@@ -196,7 +197,7 @@ public class UserController {
      * @return 用户信息
      */
     @GetMapping("/current")
-    public User getCurrentUser(@RequestHeader(value = "X-Session-Id", required = false) String sessionId,
+    public BaseResponse<User> getCurrentUser(@RequestHeader(value = "X-Session-Id", required = false) String sessionId,
                                @RequestHeader(value = "Authorization", required = false) String authHeader) {
         // 检查sessionId是否为特殊标识符（Redis不可用）
         if (sessionId != null && !sessionId.trim().isEmpty()) {
@@ -207,7 +208,7 @@ public class UserController {
                 try {
                     User user = sessionService.getUserBySession(sessionId);
                     if (user != null) {
-                        return user;
+                        return BaseResponse.success(user);
                     }
                 } catch (Exception e) {
                     System.err.println("Session认证失败，将回退到token认证: " + e.getMessage());
@@ -221,11 +222,11 @@ public class UserController {
             String token = authHeader.substring(7);
             if (jwtUtil.validateToken(token)) {
                 Long userId = jwtUtil.getUserIdFromToken(token);
-                return userService.getById(userId);
+                return BaseResponse.success(userService.getById(userId));
             }
         }
 
-        throw new RuntimeException("未提供有效的认证信息");
+        throw new BusinessException(ErrorCode.AUTHENTICATION_ERROR, "未提供有效的认证信息");
     }
     /**
      * 修改密码
@@ -235,9 +236,9 @@ public class UserController {
      * @return 修改结果
      */
     @PostMapping("/changePassword")
-    public int changePassword(@RequestParam String oldPassword,
+    public BaseResponse<Integer> changePassword(@RequestParam String oldPassword,
                               @RequestParam String newPassword,
                               @RequestParam Long userId) {
-        return userService.changePassword(userId, oldPassword, newPassword);
+        return BaseResponse.success(userService.changePassword(userId, oldPassword, newPassword));
     }
 }

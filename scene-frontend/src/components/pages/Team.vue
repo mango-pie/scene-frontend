@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { showToast } from 'vant';
 // API 导入
-import { addTeam, deleteTeam, listTeams, updateTeam } from '../../api/team';
+import {addTeam, deleteTeam, joinTeam, listTeams, myTeams, quitTeam, updateTeam} from '../../api/team';
 import { getCurrentUser, getUserById } from '../../api/user';
 
 // ==========================================
@@ -11,6 +11,7 @@ import { getCurrentUser, getUserById } from '../../api/user';
 
 // 队伍列表核心数据
 const teamList = ref([]);
+const joinedTeams = ref([]);
 const loading = ref(false);
 const currentUser = ref(null);
 const captainInfoMap = ref({}); // 队长信息映射表（userId -> 用户信息）
@@ -68,7 +69,9 @@ const editStatusText = computed(() => {
 const isMyTeam = (team) => {
   return currentUser.value && team.userId === currentUser.value.id;
 };
-
+const isJoinTeam = (team) => {
+  return joinedTeams.value.some((item) => item.id === team.id);
+};
 /**
  * 获取队伍卡片样式类
  * @param {Object} team - 队伍信息
@@ -78,6 +81,7 @@ const getTeamCardClass = (team) => {
   return {
     'team-card': true,
     'my-team': isMyTeam(team),
+    'join-team': isJoinTeam(team),
     'other-team': !isMyTeam(team)
   };
 };
@@ -91,6 +95,12 @@ const getTeamTagStyle = (team) => {
   if (isMyTeam(team)) {
     return {
       backgroundColor: '#1989fa',
+      color: 'white'
+    };
+  }
+  if (isJoinTeam(team)) {
+    return {
+      backgroundColor: 'green',
       color: 'white'
     };
   }
@@ -348,6 +358,32 @@ const handleViewTeam = (team) => {
   // 可添加跳转到队伍详情页的逻辑
 };
 
+
+const handleJoinTeam = async (team) => {
+  try {
+    await joinTeam(team);
+    showToast('加入队伍成功');
+    joinedTeams.value = await myTeams();
+  } catch (error) {
+    console.error('加入队伍失败:', error);
+    showToast('加入队伍失败');
+  }
+};
+/**
+ * 退出队伍
+ * @param {Object} team - 队伍信息
+ */
+const handleQuitTeam = async (team) => {
+  try {
+    await quitTeam(team);
+    showToast('退出队伍成功');
+    joinedTeams.value = await myTeams();
+  } catch (error) {
+    console.error('退出队伍失败:', error);
+    showToast('退出队伍失败');
+  }
+};
+
 /**
  * 打开编辑弹窗（含权限检查）
  * @param {Object} team - 队伍信息
@@ -385,6 +421,8 @@ const resetCreateForm = () => {
 onMounted(async () => {
   try {
     currentUser.value = await getCurrentUser();
+    joinedTeams.value = await myTeams();
+    console.log('加入队伍:', joinedTeams.value);
     await loadTeams();
   } catch (error) {
     console.error('初始化失败:', error);
@@ -457,6 +495,14 @@ onMounted(async () => {
                   >
                     我的队伍
                   </van-tag>
+                  <van-tag
+                      v-else-if="isJoinTeam(team)"
+                      type="success"
+                      size="small"
+                      :style="getTeamTagStyle(team)"
+                  >
+                    已加入
+                  </van-tag>
                   <van-tag type="primary" size="small">{{ getStatusText(team.status) }}</van-tag>
                   <van-tag type="success" size="small" style="margin-left: 5px">
                     最大{{ team.maxNum }}人
@@ -491,6 +537,24 @@ onMounted(async () => {
                         @click.stop="handleViewTeam(team)"
                     >
                       查看详情
+                    </van-button>
+                    <van-button
+                        v-if="!isMyTeam(team) && !isJoinTeam(team)"
+                        size="mini"
+                        type="primary"
+                        plain
+                        @click.stop="handleJoinTeam(team)"
+                    >
+                      加入队伍
+                    </van-button>
+                    <van-button
+                        v-if="isJoinTeam(team)"
+                        size="mini"
+                        type="danger"
+                        plain
+                        @click.stop="handleQuitTeam(team)"
+                    >
+                      退出队伍
                     </van-button>
                   </div>
                 </template>
@@ -768,7 +832,20 @@ onMounted(async () => {
   color: #1989fa;
   font-weight: 600;
 }
+.team-card.join-team {
+  border-left: 4px solid #52c41a;
+  background: linear-gradient(135deg, #f6ffed 0%, #f0f9ff 100%);
+  box-shadow: 0 2px 8px rgba(82, 196, 26, 0.1);
+}
 
+.team-card.join-team :deep(.van-card__header) {
+  border-bottom: 1px solid #e1f3d8;
+}
+
+.team-card.join-team :deep(.van-card__title) {
+  color: #52c41a;
+  font-weight: 600;
+}
 .team-card :deep(.van-card__content) {
   padding: 12px;
 }
