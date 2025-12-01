@@ -1,6 +1,7 @@
 package com.scenebackend.controller;
 
 import com.scenebackend.exception.BusinessException;
+import com.scenebackend.model.domain.Team;
 import com.scenebackend.model.domain.User;
 import com.scenebackend.model.dto.BaseResponse;
 import com.scenebackend.model.dto.ImageUploadResponse;
@@ -63,6 +64,21 @@ public class ImageUploadController {
         return BaseResponse.success(response);
     }
 
+@PostMapping("/team")
+public BaseResponse<String> uploadTeamImage(@RequestParam("file") MultipartFile file,
+                                                 @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
+                                                 @RequestHeader(value = "Authorization", required = false) String authHeader) {
+    // 获取当前登录用户ID
+    BaseResponse<Long> userIdResponse = getCurrentUserId(sessionId, authHeader);
+    if (userIdResponse == null) {
+        throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR, "未登录，无法上传图片");
+    }
+    Long userId = userIdResponse.getData();
+    if (userId == null) {
+        throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR, "未登录，无法上传图片");
+    }
+    return BaseResponse.success(imageUploadService.uploadTeamImage(file, userId));
+}
     /**
      * 删除图片
      */

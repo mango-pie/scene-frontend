@@ -32,9 +32,12 @@ export interface TeamQuery {
 
 // 创建队伍
 export const addTeam = (team: Team) => {
+    console.log(team);
     return request.post('/team/add', team);
 };
-
+export const updateTeamAvatar = (data: FormData) => {
+    return request.post('/upload/team', data);
+};
 // 删除队伍
 export const deleteTeam = (id: number) => {
     return request.delete(`/team/delete/${id}`);
@@ -68,3 +71,4 @@ export const quitTeam = (team: Team, sessionId?: string) => {
 export const myTeams = (sessionId?: string) => {
     return request.get(`/user-team/my-teams`,{ params: { sessionId } });
 }
+

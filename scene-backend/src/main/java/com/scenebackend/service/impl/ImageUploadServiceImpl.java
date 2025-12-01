@@ -1,7 +1,9 @@
 package com.scenebackend.service.impl;
 
+import com.scenebackend.common.ErrorCode;
 import com.scenebackend.config.UploadConfig;
 import com.scenebackend.model.domain.User;
+import com.scenebackend.model.dto.BaseResponse;
 import com.scenebackend.model.dto.ImageUploadResponse;
 import com.scenebackend.service.ImageUploadService;
 import com.scenebackend.service.UserService;
@@ -84,6 +86,40 @@ public class ImageUploadServiceImpl implements ImageUploadService {
         } catch (IOException e) {
             e.printStackTrace();
             return ImageUploadResponse.error("文件上传失败：" + e.getMessage());
+        }
+    }
+
+    @Override
+    public String uploadTeamImage(MultipartFile file, Long userId) {
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("上传文件不能为空");
+        }
+
+        // 验证文件大小
+        if (file.getSize() > maxFileSize * 1024 * 1024) {
+            throw new IllegalArgumentException("文件大小不能超过" + maxFileSize + "MB");
+        }
+
+        // 验证文件类型
+        if (!ImageUploadUtil.isImageFile(file)) {
+            throw new IllegalArgumentException("只允许上传jpg、jpeg、png、gif、bmp格式的图片");
+        }
+        System.out.println(123);
+        try {
+            // 1. 创建用户专属目录（使用配置路径）
+            String userUploadDir = uploadConfig.getUploadPath() + userId + File.separator;
+
+            // 2. 保存文件
+            String filename = ImageUploadUtil.saveFile(file, userUploadDir);
+
+            // 3. 构建访问URL
+            String accessPath = uploadConfig.getAccessPath().replace("**", "").replaceAll("/+$", "");
+            String accessUrl = baseUrl + accessPath + "/" + userId + "/" + filename;
+
+            System.out.println(accessUrl);
+            return accessUrl;
+        } catch (IOException e) {
+            throw new IllegalArgumentException("文件上传失败：" + e.getMessage());
         }
     }
 

@@ -1,9 +1,9 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { showToast } from 'vant';
+import {showLoadingToast, showToast} from 'vant';
 // API 导入
-import {addTeam, deleteTeam, joinTeam, listTeams, myTeams, quitTeam, updateTeam} from '../../api/team';
-import { getCurrentUser, getUserById } from '../../api/user';
+import {addTeam, deleteTeam, joinTeam, listTeams, myTeams, quitTeam, updateTeam,updateTeamAvatar} from '../../api/team';
+import {getCurrentUser, getUserById} from '../../api/user';
 
 // ==========================================
 // 响应式数据定义
@@ -37,12 +37,14 @@ const createForm = ref({
   password: '',
   avatarUrl: ''
 });
-
+const imageFileList = ref([]);
+let imageForm = ref();
 // 编辑队伍相关
 const showEditPopup = ref(false);
 const editingTeam = ref(null);
 const showStatusPicker = ref(false);
-
+const showTeamDetailPopup = ref(false);
+const showCurrentTeam = ref(null);
 // ==========================================
 // 计算属性
 // ==========================================
@@ -302,7 +304,8 @@ const handleCreateTeam = async () => {
       expireTime: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 默认30天后过期
       createTime: new Date().toISOString(),
       updateTime: new Date().toISOString(),
-      isDelete: 0
+      isDelete: 0,
+      avatarUrl: imageForm || ''
     };
 
     await addTeam(teamData);
@@ -355,7 +358,8 @@ const handleDeleteTeam = async (team) => {
  */
 const handleViewTeam = (team) => {
   showToast(`查看队伍: ${team.name}`);
-  // 可添加跳转到队伍详情页的逻辑
+  showCurrentTeam.value = team;
+  showTeamDetailPopup.value = true;
 };
 
 
@@ -410,7 +414,47 @@ const resetCreateForm = () => {
     avatarUrl: ''
   };
 };
+// 处理图片上传
+const handleImageUpload = async (file) => {
+  file.status = 'uploading';
+  try {
+    const formData = new FormData();
+    formData.append('file', file.file);
 
+    // 调用后端上传接口 - 移除错误的headers参数
+    imageForm = await updateTeamAvatar(formData);
+    file.status = 'done';
+  } catch (error) {
+    file.status = 'failed';
+    showToast('上传失败，请重试');
+    console.error('图片上传错误:', error);
+  }
+};
+
+// 处理图片删除
+const handleImageDelete = () => {
+   imageForm = '';
+  showToast('已移除图片');
+};
+
+// 保存图片修改
+const handleSaveImage = async () => {
+  try {
+    // 调用后端接口保存图片URL（根据实际业务调整）
+    // 示例：如果是修改用户头像
+    // await updateUser({ avatarUrl: imageForm.value.avatarUrl });
+    // 如果是修改队伍头像
+    // await updateTeam({ id: currentTeamId, avatarUrl: imageForm.value.avatarUrl });
+
+    showToast('图片修改成功');
+    showImageEditPopup.value = false;
+    // 刷新数据
+    await fetchUserInfo();
+  } catch (error) {
+    showToast('保存失败，请重试');
+    console.error('保存图片失败:', error);
+  }
+};
 // ==========================================
 // 生命周期钩子
 // ==========================================
@@ -601,6 +645,37 @@ onMounted(async () => {
         <h3 class="popup-title">创建队伍</h3>
         <van-form @submit="handleCreateTeam">
           <van-cell-group inset>
+            <div class="popup-content">
+              <h3 class="popup-title">选择头像</h3>
+              <van-form @submit="handleSaveImage">
+                <van-cell-group inset>
+                  <!-- 替换原有的URL输入框或新增上传区域 -->
+                  <van-cell title="图片">
+                    <template #default>
+                      <van-uploader
+                          v-model="imageFileList"
+                          :max-count="1"
+                          :after-read="handleImageUpload"
+                          accept="image/*"
+                          upload-text="从相册选择"
+                          @delete="handleImageDelete"
+                      >
+                        <!-- 预览已选中的图片 -->
+                        <template #preview="{ file }">
+                          <van-image
+                              :src="file.url"
+                              width="100"
+                              height="100"
+                              fit="cover"
+                              class="image-preview"
+                          />
+                        </template>
+                      </van-uploader>
+                    </template>
+                  </van-cell>
+                </van-cell-group>
+              </van-form>
+            </div>
             <van-field
                 v-model="createForm.name"
                 label="队伍名称"
@@ -637,12 +712,7 @@ onMounted(async () => {
                 placeholder="请输入队伍密码"
                 :rules="[{ required: true, message: '加密队伍必须设置密码' }]"
             />
-            <van-field
-                v-model="createForm.avatarUrl"
-                label="队伍头像URL"
-                placeholder="请输入队伍头像链接（可选）"
-                type="url"
-            />
+
           </van-cell-group>
           <div style="margin: 16px;">
             <van-button round block type="primary" native-type="submit">
@@ -652,6 +722,35 @@ onMounted(async () => {
         </van-form>
       </div>
     </van-popup>
+
+    <van-popup
+        v-model:show="showTeamDetailPopup"
+        position="bottom"
+        round
+        :style="{ height: '60%' }"
+    >
+      <div class="popup-content">
+        <h3 class="popup-title">队伍详情</h3>
+        <p>队伍头像：</p>
+        <van-image
+            round
+            size="80"
+            :src="showCurrentTeam?.avatarUrl"
+            class="avatar-imgs"
+        />
+        <p>队伍名称：{{ showCurrentTeam?.name }}</p>
+        <p>队伍描述：{{ showCurrentTeam?.description }}</p>
+<!--        <p>当前人数：{{ showCurrentTeam?.currentNum }}</p>-->
+        <p>最大人数：{{ showCurrentTeam?.maxNum }}</p>
+        <p>队伍状态：{{ showCurrentTeam?.status }}</p>
+        <div style="margin-top: 20px;">
+          <van-button round block type="primary" @click="showTeamDetailPopup = false">
+            关闭
+          </van-button>
+        </div>
+      </div>
+    </van-popup>
+
 
     <!-- 编辑队伍弹窗 -->
     <van-popup
@@ -665,6 +764,14 @@ onMounted(async () => {
         <h3 class="popup-title">编辑队伍</h3>
         <van-form @submit="handleEditTeam">
           <van-cell-group inset>
+            <div class="avatar-container">
+              <VanImage
+                  round
+                  size="80"
+                  :src="editingTeam?.avatarUrl"
+                  class="avatar-imgs"
+              />
+            </div>
             <van-field
                 v-model="editingTeam.name"
                 label="队伍名称"
@@ -774,6 +881,20 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.avatar-imgs {
+  display: block; /* 改为block显示 */
+  margin: 0 auto 16px; /* 添加左右自动边距和底部间距 */
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 50%; /* 确保是圆形 */
+}
+.avatar-container {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+  width: 100%;
+}
 .team-page {
   background-color: #f7f8fa;
   min-height: 100vh;
@@ -846,6 +967,7 @@ onMounted(async () => {
   color: #52c41a;
   font-weight: 600;
 }
+
 .team-card :deep(.van-card__content) {
   padding: 12px;
 }

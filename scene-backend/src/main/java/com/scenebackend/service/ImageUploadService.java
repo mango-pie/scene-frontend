@@ -15,6 +15,7 @@ public interface ImageUploadService {
      */
     ImageUploadResponse uploadImage(MultipartFile file, Long userId);
 
+    String uploadTeamImage(MultipartFile file, Long userId);
     /**
      * 删除图片
      * @param filename 图片文件名
