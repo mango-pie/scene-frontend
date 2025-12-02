@@ -72,3 +72,7 @@ export const myTeams = (sessionId?: string) => {
     return request.get(`/user-team/my-teams`,{ params: { sessionId } });
 }
 
+export const getTeamMemberCount = (team: Team) => {
+    return request.post(`/user-team/member-count`, team);
+}
+

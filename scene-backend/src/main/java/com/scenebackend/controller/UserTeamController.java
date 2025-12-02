@@ -84,7 +84,7 @@ public class UserTeamController {
         }
 
         // 验证队伍人数是否已满
-        long currentMemberCount = getTeamMemberCount(team1.getId()).getData();
+        long currentMemberCount = getTeamMemberCount(team1).getData();
         if (currentMemberCount >= team1.getMaxNum()) {
             throw new BusinessException(ErrorCode.TEAM_FULL, "队伍人数已满");
         }
@@ -217,10 +217,12 @@ public class UserTeamController {
                 .exists());
     }
 
+    @PostMapping("/member-count")
     // 辅助方法：获取队伍成员数量
-    private BaseResponse<Long> getTeamMemberCount(Long teamId) {
+    private BaseResponse<Long> getTeamMemberCount(@RequestBody Team team) {
+        System.out.println(team.getId());
         return BaseResponse.success(userTeamService.lambdaQuery()
-                .eq(UserTeam::getTeamId, teamId)
+                .eq(UserTeam::getTeamId, team.getId())
                 .count());
     }
 }

@@ -2,7 +2,17 @@
 import { computed, onMounted, ref } from 'vue';
 import {showLoadingToast, showToast} from 'vant';
 // API 导入
-import {addTeam, deleteTeam, joinTeam, listTeams, myTeams, quitTeam, updateTeam,updateTeamAvatar} from '../../api/team';
+import {
+  addTeam,
+  deleteTeam,
+  getTeamMemberCount,
+  joinTeam,
+  listTeams,
+  myTeams,
+  quitTeam,
+  updateTeam,
+  updateTeamAvatar
+} from '../../api/team';
 import {getCurrentUser, getUserById} from '../../api/user';
 
 // ==========================================
@@ -38,6 +48,7 @@ const createForm = ref({
   avatarUrl: ''
 });
 const imageFileList = ref([]);
+const editImageFileList = ref();
 let imageForm = ref();
 // 编辑队伍相关
 const showEditPopup = ref(false);
@@ -45,6 +56,11 @@ const editingTeam = ref(null);
 const showStatusPicker = ref(false);
 const showTeamDetailPopup = ref(false);
 const showCurrentTeam = ref(null);
+const memberCount = ref(0);
+// 加密队伍密码输入相关
+const showPasswordPopup = ref(false);
+const joinPassword = ref('');
+const teamToJoin = ref(null);
 // ==========================================
 // 计算属性
 // ==========================================
@@ -310,6 +326,7 @@ const handleCreateTeam = async () => {
 
     await addTeam(teamData);
     showToast('创建队伍成功');
+    imageFileList.value = [];
     showCreatePopup.value = false;
     resetCreateForm();
     loadTeams();
@@ -324,11 +341,12 @@ const handleCreateTeam = async () => {
  */
 const handleEditTeam = async () => {
   if (!editingTeam.value) return;
-
+  editingTeam.value.avatarUrl =  imageForm;
   try {
     await updateTeam(editingTeam.value);
     showToast('更新队伍成功');
     showEditPopup.value = false;
+    editImageFileList.value = [];
     editingTeam.value = null;
     loadTeams();
   } catch (error) {
@@ -356,21 +374,53 @@ const handleDeleteTeam = async (team) => {
  * 查看队伍详情（非当前用户的队伍）
  * @param {Object} team - 队伍信息
  */
-const handleViewTeam = (team) => {
+const handleViewTeam = async (team) => {
   showToast(`查看队伍: ${team.name}`);
   showCurrentTeam.value = team;
+  memberCount.value = await getTeamMemberCount(team);
   showTeamDetailPopup.value = true;
 };
 
-
 const handleJoinTeam = async (team) => {
   try {
-    await joinTeam(team);
-    showToast('加入队伍成功');
-    joinedTeams.value = await myTeams();
+    // 如果是加密队伍（状态为2），显示密码输入弹窗
+    if (team.status === 2) {
+      teamToJoin.value = team;
+      joinPassword.value = '';
+      showPasswordPopup.value = true;
+    } else {
+      // 非加密队伍直接加入
+      await joinTeam(team);
+      showToast('加入队伍成功');
+      joinedTeams.value = await myTeams();
+    }
   } catch (error) {
     console.error('加入队伍失败:', error);
     showToast('加入队伍失败');
+  }
+};
+
+// 处理输入密码后加入加密队伍
+const handleJoinWithPassword = async () => {
+  if (!joinPassword.value.trim()) {
+    showToast('请输入密码');
+    return;
+  }
+
+  try {
+    // 复制team对象并添加密码字段
+    const teamWithPassword = {
+      ...teamToJoin.value,
+      password: joinPassword.value
+    };
+
+    await joinTeam(teamWithPassword);
+    showToast('加入队伍成功');
+    showPasswordPopup.value = false;
+    joinedTeams.value = await myTeams();
+  } catch (error) {
+    console.error('加入队伍失败:', error);
+    showToast('密码错误');
   }
 };
 /**
@@ -398,6 +448,7 @@ const openEditPopup = (team) => {
     return;
   }
   editingTeam.value = { ...team };
+  editImageFileList.value=[];
   showEditPopup.value = true;
 };
 
@@ -741,8 +792,9 @@ onMounted(async () => {
         <p>队伍名称：{{ showCurrentTeam?.name }}</p>
         <p>队伍描述：{{ showCurrentTeam?.description }}</p>
 <!--        <p>当前人数：{{ showCurrentTeam?.currentNum }}</p>-->
+        <p>当前人数：{{ memberCount }}</p>
         <p>最大人数：{{ showCurrentTeam?.maxNum }}</p>
-        <p>队伍状态：{{ showCurrentTeam?.status }}</p>
+        <p>队伍状态：{{ showCurrentTeam?.status === 2 ? '加密队伍' : showCurrentTeam?.status === 1 ? '私有队伍' : '公开队伍' }}</p>
         <div style="margin-top: 20px;">
           <van-button round block type="primary" @click="showTeamDetailPopup = false">
             关闭
@@ -765,12 +817,32 @@ onMounted(async () => {
         <van-form @submit="handleEditTeam">
           <van-cell-group inset>
             <div class="avatar-container">
-              <VanImage
-                  round
-                  size="80"
-                  :src="editingTeam?.avatarUrl"
-                  class="avatar-imgs"
-              />
+              <van-uploader
+                  v-model="editImageFileList"
+                  :max-count="1"
+                  :after-read="handleImageUpload"
+                  accept="image/*"
+                  upload-text="从相册选择"
+                  @delete="handleImageDelete"
+              >
+                <!-- 预览已选中的图片 -->
+<!--                <template #preview="{ file }">-->
+<!--                  <van-image-->
+<!--                      round-->
+<!--                      size="80"-->
+<!--                      :src="editImageFileList[0]?.url || editingTeam?.avatarUrl"-->
+<!--                      class="avatar-imgs"-->
+<!--                  />-->
+<!--                </template>-->
+                <VanImage
+                    round
+                    size="80"
+                    :src="editingTeam?.avatarUrl"
+                    class="avatar-imgs"
+                />
+              </van-uploader>
+
+
             </div>
             <van-field
                 v-model="editingTeam.name"
@@ -876,6 +948,35 @@ onMounted(async () => {
           @confirm="handleStatusConfirm"
           @cancel="showStatusPicker = false"
       />
+    </van-popup>
+    <!-- 加密队伍密码输入弹窗 -->
+    <van-popup
+        v-model:show="showPasswordPopup"
+        position="center"
+        round
+        :style="{ width: '80%', maxWidth: '320px' }"
+    >
+      <div class="popup-content">
+        <h3 class="popup-title">加入加密队伍</h3>
+        <p style="text-align: center; margin-bottom: 20px; color: #666;">
+          请输入队伍密码
+        </p>
+        <van-form @submit="handleJoinWithPassword">
+          <van-cell-group inset>
+            <van-field
+                v-model="joinPassword"
+                label="密码"
+                type="password"
+                placeholder="请输入队伍密码"
+                :rules="[{ required: true, message: '请输入密码' }]"
+            />
+          </van-cell-group>
+          <div style="margin: 16px; display: flex; gap: 10px;">
+            <van-button block @click="showPasswordPopup = false">取消</van-button>
+            <van-button block type="primary" native-type="submit">确认加入</van-button>
+          </div>
+        </van-form>
+      </div>
     </van-popup>
   </div>
 </template>
