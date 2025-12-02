@@ -1,5 +1,6 @@
 package com.scenebackend.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.scenebackend.model.domain.Team;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.scenebackend.model.dto.TeamQuery;
@@ -15,4 +16,6 @@ public interface TeamService extends IService<Team> {
 
     List<Team> searchTeams(TeamQuery teamQuery);
 
+
+    Page<Team> getTeamList(int pageNum, int pageSize, TeamQuery teamQuery);
 }

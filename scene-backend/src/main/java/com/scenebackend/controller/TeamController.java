@@ -1,6 +1,7 @@
 package com.scenebackend.controller;
 
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.scenebackend.common.ErrorCode;
 import com.scenebackend.exception.BusinessException;
 import com.scenebackend.mapper.TeamMapper;
@@ -73,6 +74,18 @@ public class TeamController {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "查询参数为空");
         }
         List<Team> teams = teamService.searchTeams(query);
+        if(teams == null) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取队伍列表失败");
+        }
+        return BaseResponse.success(teams);
+    }
+
+    @PostMapping("/list/page")
+    public BaseResponse<Page<Team>> listTeamPage(@RequestParam int pageNum, @RequestParam int pageSize, @RequestBody TeamQuery query) {
+        if(query == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "查询参数为空");
+        }
+        Page<Team> teams = teamService.getTeamList(pageNum, pageSize, query);
         if(teams == null) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取队伍列表失败");
         }

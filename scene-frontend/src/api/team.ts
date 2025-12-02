@@ -76,3 +76,7 @@ export const getTeamMemberCount = (team: Team) => {
     return request.post(`/user-team/member-count`, team);
 }
 
+export const getTeamList = (pageNum: number, pageSize: number, query: TeamQuery) => {
+    return request.post(`/team/list/page`, query, { params: { pageNum, pageSize } });
+}
+

@@ -4,7 +4,7 @@ import {showLoadingToast, showToast} from 'vant';
 // API 导入
 import {
   addTeam,
-  deleteTeam,
+  deleteTeam, getTeamList,
   getTeamMemberCount,
   joinTeam,
   listTeams,
@@ -36,7 +36,8 @@ const filterOptions = ref({
   captainName: '',
   description: ''
 });
-
+const currentPage = ref(1);
+const totalPages = ref(10);
 // 创建队伍相关
 const showCreatePopup = ref(false);
 const createForm = ref({
@@ -49,7 +50,7 @@ const createForm = ref({
 });
 const imageFileList = ref([]);
 const editImageFileList = ref();
-let imageForm = ref();
+let imageForm = ref('');
 // 编辑队伍相关
 const showEditPopup = ref(false);
 const editingTeam = ref(null);
@@ -57,6 +58,7 @@ const showStatusPicker = ref(false);
 const showTeamDetailPopup = ref(false);
 const showCurrentTeam = ref(null);
 const memberCount = ref(0);
+
 // 加密队伍密码输入相关
 const showPasswordPopup = ref(false);
 const joinPassword = ref('');
@@ -134,7 +136,8 @@ const getTeamAvatar = (avatarUrl) => {
   if (avatarUrl && avatarUrl.trim() !== '') {
     return avatarUrl;
   }
-  return 'https://img.yzcdn.cn/vant/default-user-image.png'; // 默认头像
+  // 没有指定头像时返回默认头像
+  return 'https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAEL5GNpLs8302yQpRoi3s1iQQrxFtrlHwACPyIAAsBAeFW389IGDnhLvjYE.png'; // 默认头像
 };
 
 /**
@@ -218,8 +221,10 @@ const loadTeams = async () => {
       query.description = filterOptions.value.description.trim();
     }
 
-    const result = await listTeams(query);
-    teamList.value = result || [];
+    const result = await getTeamList(currentPage.value, 5, query);
+    console.log(result);
+    totalPages.value=result.pages*10;
+    teamList.value = result.records || [];
     await loadCaptainInfo(); // 加载队长信息
   } catch (error) {
     console.error('加载队伍列表失败:', error);
@@ -229,6 +234,10 @@ const loadTeams = async () => {
   }
 };
 
+
+const changePage = () => {
+  loadTeams();
+};
 /**
  * 加载所有队伍的队长信息
  */
@@ -321,14 +330,18 @@ const handleCreateTeam = async () => {
       createTime: new Date().toISOString(),
       updateTime: new Date().toISOString(),
       isDelete: 0,
-      avatarUrl: imageForm || ''
+      avatarUrl: imageForm
     };
 
+    if (imageForm.value==='') {
+      teamData.avatarUrl = 'https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAEL5GNpLs8302yQpRoi3s1iQQrxFtrlHwACPyIAAsBAeFW389IGDnhLvjYE.png'
+    }
     await addTeam(teamData);
     showToast('创建队伍成功');
     imageFileList.value = [];
     showCreatePopup.value = false;
     resetCreateForm();
+    imageForm=''
     loadTeams();
   } catch (error) {
     console.error('创建队伍失败:', error);
@@ -346,8 +359,10 @@ const handleEditTeam = async () => {
     await updateTeam(editingTeam.value);
     showToast('更新队伍成功');
     showEditPopup.value = false;
+
     editImageFileList.value = [];
     editingTeam.value = null;
+    imageForm=''
     loadTeams();
   } catch (error) {
     console.error('更新队伍失败:', error);
@@ -552,6 +567,7 @@ onMounted(async () => {
 
     <!-- 队伍列表区域 -->
     <div class="team-list">
+
       <van-pull-refresh v-model="loading" @refresh="loadTeams">
         <van-list
             v-model:loading="loading"
@@ -668,8 +684,17 @@ onMounted(async () => {
               </template>
             </van-swipe-cell>
           </van-cell-group>
+          <van-pagination
+              v-model="currentPage"
+              :total-items="totalPages"
+              :show-page-size="3"
+              force-ellipses
+              @change="changePage(currentPage)"
+          />
         </van-list>
+
       </van-pull-refresh>
+
     </div>
 
     <!-- 圆形加号创建按钮 - 右下角固定位置 -->
