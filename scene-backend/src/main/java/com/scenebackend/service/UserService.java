@@ -73,6 +73,25 @@ public interface UserService extends IService<User> {
 
     int changePassword(Long userId, String oldPassword, String newPassword);
 
+    /**
+     * 根据用户ID推荐相似用户（支持分页和缓存）
+     * @param userId 当前用户ID
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @param cacheKey 缓存键（用于前端"换一批"功能）
+     * @return 分页的推荐用户列表
+     */
+    Page<User> recommendUsersByUserId(Long userId, int pageNum, int pageSize, String cacheKey);
+
+    /**
+     * 根据标签列表推荐相似用户（支持分页和缓存）
+     * @param tagList 用户标签列表
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @param cacheKey 缓存键（用于前端"换一批"功能）
+     * @return 分页的推荐用户列表
+     */
+    Page<User> recommendUsersByTags(List<String> tagList, int pageNum, int pageSize, String cacheKey);
 
 
     //List<User> searchUserByTags(List<String> tagList);

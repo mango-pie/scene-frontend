@@ -22,10 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 import org.springframework.session.SessionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -296,5 +294,213 @@ public int updateUser(UserUpdateRequest request) {
         }
         User user = userMapper.selectOne(new LambdaQueryWrapper<User>().like(User::getUsername, username));
         return this.getSafetyUser(user);
+    }
+
+    @Override
+    public Page<User> recommendUsersByUserId(Long userId, int pageNum, int pageSize, String cacheKey) {
+        if (userId == null || pageNum < 1 || pageSize < 1) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数错误");
+        }
+
+        // 生成Redis缓存键
+        String redisKey = "user:recommend:userId:" + userId + ":cache:" + cacheKey;
+
+        System.out.println("根11）");
+        try {
+            // 尝试从缓存获取预计算的所有推荐用户
+            List<User> allRecommendedUsers = (List<User>) redisTemplate.opsForValue().get(redisKey);
+            System.out.println("allRecommendedUsers: " + allRecommendedUsers);
+            // 如果缓存不存在，计算推荐用户并缓存
+            if (allRecommendedUsers == null) {
+                // 获取当前用户
+                User currentUser = this.getById(userId);
+                if (currentUser == null) {
+                    throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+                }
+System.out.println("currentUser: " + currentUser);
+                // 获取当前用户的标签列表
+                List<String> currentUserTags = currentUser.getTagList();
+                if (currentUserTags.isEmpty()) {
+                    return new Page<>();
+                }
+
+                // 获取所有其他用户
+                QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+                queryWrapper.ne("id", userId); // 排除当前用户
+                queryWrapper.ne("userStatus", 0); // 排除禁用用户
+                List<User> otherUsers = userMapper.selectList(queryWrapper);
+
+                System.out.println("otherUsers: " + otherUsers);
+                // 计算相似度并排序
+                List<UserSimilarity> similarities = new ArrayList<>();
+                for (User user : otherUsers) {
+                    List<String> userTags = user.getTagList();
+                    if (!userTags.isEmpty()) {
+                        double similarity = calculateTagSimilarity(currentUserTags, userTags);
+                        if (similarity > 0) { // 只添加有相似度的用户
+                            similarities.add(new UserSimilarity(user, similarity));
+                        }
+                    }
+                }
+
+                // 按相似度降序排序
+                similarities.sort((a, b) -> Double.compare(b.getSimilarity(), a.getSimilarity()));
+
+                // 转换为安全用户列表
+                allRecommendedUsers = similarities.stream()
+                        .map(us -> getSafetyUser(us.getUser()))
+                        .collect(Collectors.toList());
+
+                // 缓存推荐结果，设置1小时过期
+                redisTemplate.opsForValue().set(redisKey, allRecommendedUsers, 1, TimeUnit.HOURS);
+            }
+
+            // 执行分页
+            Page<User> resultPage = new Page<>(pageNum, pageSize);
+            int total = allRecommendedUsers.size();
+            resultPage.setTotal(total);
+
+            // 计算分页数据
+            int startIndex = (int) ((pageNum - 1) * pageSize);
+            int endIndex = Math.min(startIndex + pageSize, total);
+
+            if (startIndex < total) {
+                List<User> pageData = allRecommendedUsers.subList(startIndex, endIndex);
+                resultPage.setRecords(pageData);
+            } else {
+                resultPage.setRecords(new ArrayList<>());
+            }
+
+            return resultPage;
+        } catch (Exception e) {
+            // 如果Redis操作失败，记录异常但继续执行
+            log.error("Redis缓存操作失败: " + e.getMessage(), e);
+            // 降级处理：直接返回空分页
+            return new Page<>();
+        }
+    }
+
+    @Override
+    public Page<User> recommendUsersByTags(List<String> tagList, int pageNum, int pageSize, String cacheKey) {
+        if (tagList == null || tagList.isEmpty() || pageNum < 1 || pageSize < 1) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数错误");
+        }
+
+        // 生成Redis缓存键（对标签列表进行排序以确保一致性）
+        List<String> sortedTags = new ArrayList<>(tagList);
+        Collections.sort(sortedTags);
+        String tagsHash = String.join(",", sortedTags);
+        String redisKey = "user:recommend:tags:" + tagsHash + ":cache:" + cacheKey;
+
+        try {
+            // 尝试从缓存获取预计算的所有推荐用户
+            List<User> allRecommendedUsers = (List<User>) redisTemplate.opsForValue().get(redisKey);
+
+            // 如果缓存不存在，计算推荐用户并缓存
+            if (allRecommendedUsers == null) {
+                // 获取所有用户
+                QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+                queryWrapper.ne("userStatus", 0); // 排除禁用用户
+                List<User> allUsers = userMapper.selectList(queryWrapper);
+
+                // 计算相似度并排序
+                List<UserSimilarity> similarities = new ArrayList<>();
+                for (User user : allUsers) {
+                    List<String> userTags = user.getTagList();
+                    if (!userTags.isEmpty()) {
+                        double similarity = calculateTagSimilarity(tagList, userTags);
+                        if (similarity > 0) { // 只添加有相似度的用户
+                            similarities.add(new UserSimilarity(user, similarity));
+                        }
+                    }
+                }
+
+                // 按相似度降序排序
+                similarities.sort((a, b) -> Double.compare(b.getSimilarity(), a.getSimilarity()));
+
+                // 转换为安全用户列表
+                allRecommendedUsers = similarities.stream()
+                        .map(us -> getSafetyUser(us.getUser()))
+                        .collect(Collectors.toList());
+
+                // 缓存推荐结果，设置1小时过期
+                redisTemplate.opsForValue().set(redisKey, allRecommendedUsers, 1, TimeUnit.HOURS);
+            }
+
+            // 执行分页
+            Page<User> resultPage = new Page<>(pageNum, pageSize);
+            int total = allRecommendedUsers.size();
+            resultPage.setTotal(total);
+
+            // 计算分页数据
+            int startIndex = (int) ((pageNum - 1) * pageSize);
+            int endIndex = Math.min(startIndex + pageSize, total);
+
+            if (startIndex < total) {
+                List<User> pageData = allRecommendedUsers.subList(startIndex, endIndex);
+                resultPage.setRecords(pageData);
+            } else {
+                resultPage.setRecords(new ArrayList<>());
+            }
+
+            return resultPage;
+        } catch (Exception e) {
+            // 如果Redis操作失败，记录异常但继续执行
+            log.error("Redis缓存操作失败: " + e.getMessage(), e);
+            // 降级处理：直接返回空分页
+            return new Page<>();
+        }
+    }
+    /**
+     * 计算两个标签列表的余弦相似度
+     * @param tags1 标签列表1
+     * @param tags2 标签列表2
+     * @return 相似度，范围[0,1]
+     */
+    private double calculateTagSimilarity(List<String> tags1, List<String> tags2) {
+        // 创建标签集合
+        Set<String> allTags = new HashSet<>();
+        allTags.addAll(tags1);
+        allTags.addAll(tags2);
+
+        // 计算点积
+        int dotProduct = 0;
+        for (String tag : tags1) {
+            if (tags2.contains(tag)) {
+                dotProduct++;
+            }
+        }
+
+        // 计算向量长度
+        double magnitude1 = Math.sqrt(tags1.size());
+        double magnitude2 = Math.sqrt(tags2.size());
+
+        // 计算余弦相似度
+        if (magnitude1 == 0 || magnitude2 == 0) {
+            return 0;
+        }
+
+        return dotProduct / (magnitude1 * magnitude2);
+    }
+
+    /**
+     * 用户相似度内部类，用于存储用户和相似度
+     */
+    private static class UserSimilarity {
+        private User user;
+        private double similarity;
+
+        public UserSimilarity(User user, double similarity) {
+            this.user = user;
+            this.similarity = similarity;
+        }
+
+        public User getUser() {
+            return user;
+        }
+
+        public double getSimilarity() {
+            return similarity;
+        }
     }
 }

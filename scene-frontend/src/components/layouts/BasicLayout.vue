@@ -12,7 +12,7 @@ const onclickRight = () => {
   router.push('/search');
 }
 const router = useRouter();
-const active = ref("home");
+const active = ref("setting");
 const onChange = (index) => showToast(`标签 ${index}`)
 
 </script>

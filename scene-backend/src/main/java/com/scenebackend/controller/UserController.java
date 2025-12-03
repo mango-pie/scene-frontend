@@ -11,10 +11,18 @@ import com.scenebackend.service.UserService;
 import com.scenebackend.utils.JwtUtil;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import org.mybatis.logging.Logger;
+import org.mybatis.logging.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import com.scenebackend.utils.SessionService;
 import jakarta.servlet.http.HttpSession;
@@ -29,6 +37,12 @@ public class UserController {
     private JwtUtil jwtUtil;
     @Autowired
     private SessionService sessionService;
+
+    // 在UserController类中添加
+    private static final Logger log = LoggerFactory.getLogger(UserController.class);
+
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
     /**
      * 根据用户名搜索用户
      * @param username 用户名
@@ -240,5 +254,98 @@ public class UserController {
                               @RequestParam String newPassword,
                               @RequestParam Long userId) {
         return BaseResponse.success(userService.changePassword(userId, oldPassword, newPassword));
+    }
+
+
+    /**
+     * 根据用户ID推荐相似用户（支持分页和缓存）
+     * @param userId 当前用户ID
+     * @param pageNum 页码，默认1
+     * @param pageSize 每页大小，默认10
+     * @param cacheKey 缓存键（用于前端"换一批"功能），默认"default"
+     * @return 分页的推荐用户列表
+     */
+    @GetMapping("/recommend/byUserId")
+    public BaseResponse<Page<User>> recommendUsersByUserId(
+            @RequestParam Long userId,
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(defaultValue = "default") String cacheKey) {
+        System.out.println("根据用户ID推荐相似用户（支持分页和缓存）");
+        System.out.println("userId: " + userId);
+        System.out.println("pageNum: " + pageNum);
+        System.out.println("pageSize: " + pageSize);
+        System.out.println("cacheKey: " + cacheKey);
+        return BaseResponse.success(userService.recommendUsersByUserId(userId, pageNum, pageSize, cacheKey));
+    }
+
+    /**
+     * 根据标签列表推荐相似用户（支持分页和缓存）
+     * @param tags 标签列表，多个标签用逗号分隔
+     * @param pageNum 页码，默认1
+     * @param pageSize 每页大小，默认10
+     * @param cacheKey 缓存键（用于前端"换一批"功能），默认"default"
+     * @return 分页的推荐用户列表
+     */
+    @GetMapping("/recommend/byTags")
+    public BaseResponse<Page<User>> recommendUsersByTags(
+            @RequestParam String tags,
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "5") int pageSize,
+            @RequestParam(defaultValue = "default") String cacheKey) {
+        // 解析标签字符串为列表
+        List<String> tagList = Arrays.stream(tags.split(","))
+                .map(String::trim)
+                .filter(tag -> !tag.isEmpty())
+                .collect(Collectors.toList());
+        return BaseResponse.success(userService.recommendUsersByTags(tagList, pageNum, pageSize, cacheKey));
+    }
+
+    /**
+     * 清除特定用户ID的推荐缓存（用于"换一批"功能）
+     * @param userId 用户ID
+     * @return 操作结果
+     */
+    @DeleteMapping("/recommend/cache/byUserId")
+    public BaseResponse<Boolean> clearRecommendCacheByUserId(@RequestParam Long userId) {
+        try {
+            // 使用模式匹配删除所有相关缓存
+            String pattern = "user:recommend:userId:" + userId + ":cache:*";
+            Set<String> keys = redisTemplate.keys(pattern);
+            if (keys != null && !keys.isEmpty()) {
+                redisTemplate.delete(keys);
+            }
+            return BaseResponse.success(true);
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "清除推荐缓存失败");
+        }
+    }
+
+    /**
+     * 清除特定标签列表的推荐缓存（用于"换一批"功能）
+     * @param tags 标签列表，多个标签用逗号分隔
+     * @return 操作结果
+     */
+    @DeleteMapping("/recommend/cache/byTags")
+    public BaseResponse<Boolean> clearRecommendCacheByTags(@RequestParam String tags) {
+        try {
+            // 解析标签并排序以匹配缓存键格式
+            List<String> tagList = Arrays.stream(tags.split(","))
+                    .map(String::trim)
+                    .filter(tag -> !tag.isEmpty())
+                    .collect(Collectors.toList());
+            Collections.sort(tagList);
+            String tagsHash = String.join(",", tagList);
+
+            // 使用模式匹配删除所有相关缓存
+            String pattern = "user:recommend:tags:" + tagsHash + ":cache:*";
+            Set<String> keys = redisTemplate.keys(pattern);
+            if (keys != null && !keys.isEmpty()) {
+                redisTemplate.delete(keys);
+            }
+            return BaseResponse.success(true);
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "清除推荐缓存失败");
+        }
     }
 }
