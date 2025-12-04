@@ -1,0 +1,28 @@
+// 验证码移动端样式变量
+$captcha: (
+  // 颜色
+        primary-color: #3b82f6,       // 主色（输入框聚焦、按钮等）
+        bg-color: #f9fafb,            // 画布背景色
+        label-color: #374151,         // 标签文本色
+        tip-color: #9ca3af,           // 提示文本色
+        border-color: #e5e7eb,        // 边框色
+        shadow-color: rgba(0,0,0,0.08), // 阴影色
+  // 尺寸
+        canvas-width: 280px,          // 画布基础宽度
+        canvas-height: 70px,          // 画布基础高度
+        input-height: 48px,           // 输入框高度
+        input-font-size: 16px,        // 输入框字号
+        label-font-size: 16px,        // 标签字号
+        tip-font-size: 12px,          // 提示字号
+  // 圆角
+        radius: 12px,                 // 通用圆角
+  // 间距
+        form-margin-bottom: 24px,     // 表单组间距
+        label-margin-bottom: 8px,     // 标签与组件间距
+        tip-margin-top: 8px,          // 提示文本间距
+);
+
+// 快捷获取变量的函数（可选）
+@function captcha-variable($key) {
+  @return map-get($captcha, $key);
+}

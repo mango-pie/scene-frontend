@@ -27,7 +27,7 @@ public class ImageUploadServiceImpl implements ImageUploadService {
     private UploadConfig uploadConfig;
 
     // 最大文件大小(MB)
-    @Value("${upload.max-size:5}")
+    @Value("${upload.max-size:10")
     private long maxFileSize;
 
     // 应用访问基础URL

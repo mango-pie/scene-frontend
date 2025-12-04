@@ -78,7 +78,7 @@ onMounted(() => {
 <template>
   <div class="home-container">
     <header class="page-header">
-      <h1>用户推荐系统</h1>
+      <h1>用户推荐</h1>
       <p>根据你的兴趣，我们为你推荐了以下用户</p>
     </header>
 

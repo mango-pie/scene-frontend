@@ -23,6 +23,10 @@ const showEditTagsPopup = ref(false);
 
 
 import CaptchaInput from '../../components/layouts/CaptchaInput.vue';
+import captchaMobileMixin from '../../mixins/captcha-mobile.js';
+defineOptions({
+  mixins: [captchaMobileMixin]
+});
 // 绑定用户输入
 const emailInput = ref('');
 const phoneInput = ref('');
@@ -30,35 +34,6 @@ const phoneInput = ref('');
 // 验证码实例ref（用于手动调用方法）
 const emailCaptcha = ref(null);
 const phoneCaptcha = ref(null);
-
-// // 登录验证码-验证成功
-// const handleLoginVerifySuccess = (correctVal) => {
-//   console.log('登录验证码验证成功：', correctVal);
-//   // 执行登录逻辑...
-// };
-//
-// // 登录验证码-验证失败
-// const handleLoginVerifyFail = (inputVal) => {
-//   console.log('登录验证码验证失败，输入值：', inputVal);
-// };
-//
-// // 登录验证码-刷新
-// const handleLoginCaptchaRefresh = (newVal) => {
-//   console.log('登录验证码已刷新，新验证码：', newVal);
-// };
-// // 注册验证码-验证成功
-// const handleRegisterVerifySuccess = (correctVal) => {
-//   console.log('注册验证码验证成功：', correctVal);
-//   // 执行注册逻辑...
-// };
-//
-// // 手动刷新所有验证码
-// const refreshAllCaptcha = () => {
-//   loginCaptcha.value?.refreshCaptcha();
-//   registerCaptcha.value?.refreshCaptcha();
-// };
-
-
 // 表单数据
 const formData = ref({
   account: '',
@@ -593,10 +568,9 @@ onMounted(() => {
         <van-cell title="邮箱" is-link :value="userInfo?.email || '-'" @click="openEditPopup('email')" />
         <van-cell title="手机号码" is-link :value="userInfo?.phone || '-'" @click="openEditPopup('phone')" />
         <van-cell title="性别" is-link :value="userGender" @click="openEditPopup('gender')" />
-        <van-cell title="工厂代码" :value="userInfo?.plantCode || '-'" />
+        <van-cell title="星球编号" :value="userInfo?.plantCode || '-'" />
       </van-cell-group>
     </div>
-
     <Divider />
 
     <!-- 系统信息区域 -->
@@ -610,7 +584,6 @@ onMounted(() => {
     </div>
 
     <Divider />
-
     <!-- 用户标签区域 -->
     <div class="section">
       <div class="section-header">
@@ -726,17 +699,23 @@ onMounted(() => {
               type="email"
               clearable
           />
-
-          <captcha-input
-              ref="emailCaptcha"
-              :length="4"
-              :width="200"
-              :height="80"
-              placeholder="输入验证码"
-              v-model="emailInput"
-              :hide-refresh-btn="true"
-              :hide-verify-btn="true"
-          />
+          <div class="mobile-form-container">
+            <div class="form-group captcha-form-group">
+              <label class="captcha-form-label">请输入验证码：</label>
+              <div class="captcha-wrapper">
+                <CaptchaInput
+                    ref="emailCaptcha"
+                    class="captcha-mobile"
+                    v-model="emailInput"
+                    :length="4"
+                    placeholder="请输入验证码"
+                    :hide-refresh-btn="true"
+                    :hide-verify-btn="true"
+                />
+                <div class="captcha-tip">点击验证码图片可刷新</div>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="popup-buttons">
           <van-button round type="default" @click="closePopup('email')" style="margin-right: 10px;">取消</van-button>
@@ -763,25 +742,23 @@ onMounted(() => {
               type="tel"
               clearable
           />
-<!--          <van-field-->
-<!--              label="验证码"-->
-<!--              placeholder="请输入验证码"-->
-<!--              clearable-->
-<!--          >-->
-<!--            <template #button>-->
-<!--              <van-button size="small" type="primary">获取验证码</van-button>-->
-<!--            </template>-->
-<!--          </van-field>-->
-          <captcha-input
-              ref="phoneCaptcha"
-              :length="4"
-              :width="200"
-              :height="80"
-              placeholder="输入验证码"
-              v-model="phoneInput"
-              :hide-refresh-btn="true"
-              :hide-verify-btn="true"
-          />
+          <div class="mobile-form-container">
+            <div class="form-group captcha-form-group">
+              <label class="captcha-form-label">请输入验证码：</label>
+              <div class="captcha-wrapper">
+                <CaptchaInput
+                    ref="phoneCaptcha"
+                    class="captcha-mobile"
+                    v-model="phoneInput"
+                    :length="4"
+                    placeholder="请输入验证码"
+                    :hide-refresh-btn="true"
+                    :hide-verify-btn="true"
+                />
+                <div class="captcha-tip">点击验证码图片可刷新</div>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="popup-buttons">
           <van-button round type="default" @click="closePopup('phone')" style="margin-right: 10px;">取消</van-button>
@@ -832,8 +809,8 @@ onMounted(() => {
           />
           <van-field
               v-model="formData.plantCode"
-              label="工厂代码"
-              placeholder="请输入工厂代码"
+              label="星球编号"
+              placeholder="请输入星球编号"
               clearable
           />
           <van-field
@@ -1012,7 +989,9 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped>
+<style scoped lang = "scss">
+@import '../../styles/variables.scss';
+@import '../../styles/captcha-mobile.scss';
 
 .image-preview {
   border-radius: 8px;

@@ -33,18 +33,22 @@
         <label>密码：</label>
         <input v-model="userPassword" type="password" placeholder="请输入密码" />
       </div>
-      <div class="form-group">
-        <label>验证码：</label>
-        <CaptchaInput
-            ref="loginCaptcha"
-            :length="4"
-            :width="200"
-            :height="80"
-            placeholder="输入验证码"
-            v-model="loginInput"
-            :hide-refresh-btn="true"
-            :hide-verify-btn="true"
-        />
+      <div class="mobile-form-container">
+        <div class="form-group captcha-form-group">
+          <label class="captcha-form-label">登录验证码：</label>
+          <div class="captcha-wrapper">
+            <CaptchaInput
+                ref="loginCaptcha"
+                class="captcha-mobile"
+                v-model="loginInput"
+                :length="4"
+                placeholder="请输入验证码"
+                :hide-refresh-btn="true"
+                :hide-verify-btn="true"
+            />
+            <div class="captcha-tip">点击验证码图片可刷新</div>
+          </div>
+        </div>
       </div>
       <button @click="handleLogin" class="login-btn">登录</button>
       <button @click="handleRegister" class="register-btn" style="margin-top: 10px">注册</button>
@@ -58,6 +62,10 @@ import { useRouter } from 'vue-router';
 import { showToast } from 'vant';
 import { userLogin, getCurrentUser, userLogout } from '../../api/user';
 import CaptchaInput from '../../components/layouts/CaptchaInput.vue';
+import captchaMobileMixin from '../../mixins/captcha-mobile.js';
+defineOptions({
+  mixins: [captchaMobileMixin]
+});
 const router = useRouter();
 const userInfo = ref(null);
 const userAccount = ref('');
@@ -200,7 +208,10 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+
+@import '../../styles/variables.scss';
+@import '../../styles/captcha-mobile.scss';
 .user-container {
   padding: 20px;
 }

@@ -1,0 +1,122 @@
+// 引入变量
+@import './variables.scss';
+
+// 手机端表单容器（多个组件共用）
+.mobile-form-container {
+  width: 100%;
+  max-width: 350px;
+  margin: 0 auto;
+  padding: 0 16px;
+  padding-top: 24px;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif;
+
+  // 小屏手机适配
+  @media (max-width: 375px) {
+    padding: 0 12px;
+    padding-top: 20px;
+  }
+}
+
+// 表单组样式（验证码专用）
+.captcha-form-group {
+  margin-bottom: captcha-variable(form-margin-bottom);
+
+  .captcha-form-label {
+    display: block;
+    font-size: captcha-variable(label-font-size);
+    color: captcha-variable(label-color);
+    margin-bottom: captcha-variable(label-margin-bottom);
+    font-weight: 500;
+
+    @media (max-width: 375px) {
+      font-size: 15px;
+    }
+  }
+
+  .captcha-wrapper {
+    width: 100%;
+
+    .captcha-tip {
+      margin-top: captcha-variable(tip-margin-top);
+      font-size: captcha-variable(tip-font-size);
+      color: captcha-variable(tip-color);
+      line-height: 1.4;
+    }
+  }
+}
+
+// 验证码组件内部样式穿透（全局通用）
+.captcha-mobile {
+  :deep(.captcha-container) {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  :deep(.captcha-input-wrap) {
+    margin-top: 12px !important;
+    gap: 0 !important;
+  }
+
+  :deep(.captcha-input) {
+    width: 100% !important;
+    height: captcha-variable(input-height) !important;
+    line-height: 1.5 !important;
+    font-size: captcha-variable(input-font-size) !important;
+    border-radius: captcha-variable(radius) !important;
+    border: 1px solid captcha-variable(border-color) !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+    padding: 12px 16px !important;
+
+    &:focus {
+      border-color: captcha-variable(primary-color) !important;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1) !important;
+      outline: none !important;
+    }
+
+    @media (max-width: 375px) {
+      height: 44px !important;
+      font-size: 15px !important;
+    }
+  }
+
+  :deep(.captcha-canvas) {
+    width: 100% !important;
+    height: auto !important;
+    border-radius: captcha-variable(radius) !important;
+    box-shadow: 0 2px 8px captcha-variable(shadow-color) !important;
+    background-color: captcha-variable(bg-color) !important;
+    cursor: pointer !important;
+    transition: transform 0.2s ease;
+
+    &:active {
+      transform: scale(0.98);
+    }
+
+    @media (max-width: 375px) {
+      height: 65px !important;
+    }
+  }
+}
+
+// 深色模式适配（全局）
+@media (prefers-color-scheme: dark) {
+  .captcha-form-group {
+    .captcha-form-label {
+      color: #da1919;
+    }
+    .captcha-tip {
+      color: #b52fc9;
+    }
+  }
+
+  .captcha-mobile {
+    :deep(.captcha-canvas) {
+      background-color: #ffffff !important;
+    }
+    :deep(.captcha-input) {
+      background-color: #030303 !important;
+      color: #fff !important;
+      border-color: #376cc2 !important;
+    }
+  }
+}
