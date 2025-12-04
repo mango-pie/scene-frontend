@@ -13,7 +13,7 @@ const onclickRight = () => {
 }
 const router = useRouter();
 const active = ref("setting");
-const onChange = (index) => showToast(`标签 ${index}`)
+const onChange = (index) => showToast('')
 
 </script>
 

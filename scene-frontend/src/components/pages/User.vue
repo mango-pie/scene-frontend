@@ -1,61 +1,3 @@
-<template>
-  <div class="user-container">
-    <!-- 登录状态检查 -->
-    <div v-if="isLoggedIn" class="user-header">
-      <div class="avatar-container" @click="handleAvatarClick">
-        <van-image
-            round
-            size="80"
-            :src="userInfo?.avatarUrl"
-            class="avatar-img"
-        >
-          <!-- 头像加载失败时显示用户名首字母 -->
-          <template #default>
-            {{ userInfo?.username?.charAt(0) || '用' }}
-          </template>
-        </van-image>
-      </div>
-      <div class="user-basic-info">
-        <h2 class="user-name" @click="handleAvatarClick">{{ userInfo?.username }}</h2>
-        <p class="user-account" @click="handleAvatarClick">账号：{{ userInfo?.userAccount }}</p>
-      </div>
-      <button @click="handleLogout" class="logout-btn">退出登录</button>
-    </div>
-    
-    <!-- 登录表单 -->
-    <div v-else class="login-container">
-      <h2>用户登录</h2>
-      <div class="form-group">
-        <label>账号：</label>
-        <input v-model="userAccount" type="text" placeholder="请输入账号" />
-      </div>
-      <div class="form-group">
-        <label>密码：</label>
-        <input v-model="userPassword" type="password" placeholder="请输入密码" />
-      </div>
-      <div class="mobile-form-container">
-        <div class="form-group captcha-form-group">
-          <label class="captcha-form-label">登录验证码：</label>
-          <div class="captcha-wrapper">
-            <CaptchaInput
-                ref="loginCaptcha"
-                class="captcha-mobile"
-                v-model="loginInput"
-                :length="4"
-                placeholder="请输入验证码"
-                :hide-refresh-btn="true"
-                :hide-verify-btn="true"
-            />
-            <div class="captcha-tip">点击验证码图片可刷新</div>
-          </div>
-        </div>
-      </div>
-      <button @click="handleLogin" class="login-btn">登录</button>
-      <button @click="handleRegister" class="register-btn" style="margin-top: 10px">注册</button>
-    </div>
-  </div>
-</template>
-
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
@@ -208,77 +150,167 @@ onMounted(() => {
 });
 </script>
 
-<style scoped lang="scss">
 
+
+<template>
+  <div class="user-container">
+    <!-- 登录状态检查 -->
+    <div v-if="isLoggedIn" class="user-header">
+      <div class="avatar-container" @click="handleAvatarClick">
+        <van-image
+            round
+            :size="100"
+            :src="userInfo?.avatarUrl"
+            class="avatar-img"
+        >
+          <!-- 头像加载失败时显示用户名首字母 -->
+          <template #default>
+            {{ userInfo?.username?.charAt(0) || '用' }}
+          </template>
+        </van-image>
+      </div>
+
+      <div class="user-basic-info">
+        <h2 class="user-name" @click="handleAvatarClick">{{ userInfo?.username }}</h2>
+        <p class="user-account" @click="handleAvatarClick">账号：{{ userInfo?.userAccount }}</p>
+
+        <!-- 新增用户信息卡片 -->
+        <div class="user-stats">
+          <div class="stat-item">
+            <div class="stat-value">{{ userInfo?.postCount || 0 }}</div>
+            <div class="stat-label">帖子</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">{{ userInfo?.followerCount || 0 }}</div>
+            <div class="stat-label">关注</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">{{ userInfo?.followingCount || 0 }}</div>
+            <div class="stat-label">粉丝</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作按钮区域 -->
+    <div v-if="isLoggedIn" class="action-buttons">
+      <van-button
+          round
+          type="primary"
+          block
+          @click="handleAvatarClick"
+          class="edit-profile-btn"
+      >
+        编辑资料
+      </van-button>
+      <van-button
+          round
+          type="info"
+          block
+          @click="handleLogout"
+          class="logout-btn"
+      >
+        退出登录
+      </van-button>
+    </div>
+
+    <!-- 登录表单 - 移动端优化版 -->
+    <div v-else class="login-container">
+      <div class="login-header">
+        <h2 class="login-title">欢迎回来</h2>
+        <p class="login-subtitle">请登录账号继续使用</p>
+      </div>
+
+      <div class="form-group">
+        <label>账号：</label>
+        <input
+            v-model="userAccount"
+            type="text"
+            placeholder="请输入账号"
+            class="form-input"
+        />
+      </div>
+
+      <div class="form-group">
+        <label>密码：</label>
+        <input
+            v-model="userPassword"
+            type="password"
+            placeholder="请输入密码"
+            class="form-input"
+        />
+      </div>
+
+      <!-- 验证码部分保持原样 -->
+      <div class="mobile-form-container">
+        <div class="form-group captcha-form-group">
+          <label class="captcha-form-label">登录验证码：</label>
+          <div class="captcha-wrapper">
+            <CaptchaInput
+                ref="loginCaptcha"
+                class="captcha-mobile"
+                v-model="loginInput"
+                :length="4"
+                placeholder="请输入验证码"
+                :hide-refresh-btn="true"
+                :hide-verify-btn="true"
+            />
+            <div class="captcha-tip">点击验证码图片可刷新</div>
+          </div>
+        </div>
+      </div>
+
+      <button @click="handleLogin" class="login-btn">登录</button>
+      <button @click="handleRegister" class="register-btn">注册新账号</button>
+
+      <div class="other-options">
+        <a class="forgot-password">忘记密码？</a>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped lang="scss">
 @import '../../styles/variables.scss';
 @import '../../styles/captcha-mobile.scss';
+
 .user-container {
-  padding: 20px;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* 登录表单样式 */
-.login-container {
-  max-width: 400px;
-  margin: 0 auto;
-}
-.form-group {
-  margin-bottom: 15px;
-}
-input {
-  width: 100%;
-  padding: 8px;
-  box-sizing: border-box;
-}
-.login-btn {
-  width: 100%;
-  padding: 10px;
-  background-color: #646cff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.register-btn {
-  width: 100%;
-  padding: 10px;
-  background-color: white;
-  color: blue;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-
-
-/* 用户信息展示样式 */
+/* 登录状态样式 */
 .user-header {
-  display: flex;
-  align-items: center;
-  padding: 20px;
   background-color: #fff;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .avatar-container {
-  cursor: pointer;
-  margin-right: 20px;
+  margin-bottom: 20px;
+  position: relative;
 }
 
 .avatar-img {
-  width: 80px !important;
-  height: 80px !important;
-  object-fit: cover;
+  width: 100px !important;
+  height: 100px !important;
+  border: 3px solid #f0f0f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .user-basic-info {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  flex: 1;
+  width: 100%;
 }
 
 .user-name {
-  font-size: 20px;
-  font-weight: bold;
+  font-size: 22px;
+  font-weight: 600;
   margin: 0 0 8px 0;
   color: #333;
 }
@@ -286,15 +318,153 @@ input {
 .user-account {
   font-size: 14px;
   color: #666;
-  margin: 0;
+  margin: 0 0 16px 0;
+}
+
+/* 用户统计信息 */
+.user-stats {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #888;
+  margin-top: 4px;
+}
+
+/* 操作按钮 */
+.action-buttons {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.edit-profile-btn {
+  background-color: #646cff;
 }
 
 .logout-btn {
-  padding: 8px 16px;
   background-color: #f56c6c;
-  color: white;
+}
+
+/* 未登录状态样式 */
+.login-container {
+  padding: 30px 20px;
+  max-width: 380px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.login-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.login-subtitle {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.form-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 16px;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+
+  &:focus {
+    border-color: #646cff;
+    outline: none;
+  }
+}
+
+.login-btn, .register-btn {
+  width: 100%;
+  padding: 14px;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
   cursor: pointer;
+  transition: background-color 0.2s;
+  box-sizing: border-box;
+}
+
+.login-btn {
+  background-color: #646cff;
+  color: white;
+  margin-bottom: 12px;
+}
+
+.register-btn {
+  background-color: white;
+  color: #646cff;
+  border: 1px solid #646cff;
+  margin-bottom: 20px;
+}
+
+.other-options {
+  text-align: center;
+}
+
+.forgot-password {
+  font-size: 14px;
+  color: #646cff;
+  text-decoration: none;
+}
+
+/* 响应式调整 */
+@media (max-width: 375px) {
+  .user-header {
+    padding: 20px 16px;
+  }
+
+  .login-container {
+    padding: 20px 16px;
+  }
+
+  .user-stats {
+    gap: 20px;
+  }
 }
 </style>
