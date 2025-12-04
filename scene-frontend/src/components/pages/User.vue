@@ -33,6 +33,19 @@
         <label>密码：</label>
         <input v-model="userPassword" type="password" placeholder="请输入密码" />
       </div>
+      <div class="form-group">
+        <label>验证码：</label>
+        <CaptchaInput
+            ref="loginCaptcha"
+            :length="4"
+            :width="200"
+            :height="80"
+            placeholder="输入验证码"
+            v-model="loginInput"
+            :hide-refresh-btn="true"
+            :hide-verify-btn="true"
+        />
+      </div>
       <button @click="handleLogin" class="login-btn">登录</button>
       <button @click="handleRegister" class="register-btn" style="margin-top: 10px">注册</button>
     </div>
@@ -44,14 +57,25 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { showToast } from 'vant';
 import { userLogin, getCurrentUser, userLogout } from '../../api/user';
-
+import CaptchaInput from '../../components/layouts/CaptchaInput.vue';
 const router = useRouter();
 const userInfo = ref(null);
 const userAccount = ref('');
 const userPassword = ref('');
 const isLoggedIn = ref(false);
 
+const loginCaptcha = ref(null);
+const loginInput = ref('');
+
+
 const handleLogin = async () => {
+  // 验证验证码
+  loginCaptcha.value?.handleVerify();
+  if (!loginCaptcha.value?.isVerified) {
+    showToast('验证码错误');
+    return;
+  }
+
   if (!userAccount.value || !userPassword.value) {
     showToast('请输入账号和密码');
     return;

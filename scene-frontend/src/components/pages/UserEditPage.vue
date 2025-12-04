@@ -22,16 +22,41 @@ const showEditTagsPopup = ref(false);
 
 
 
+import CaptchaInput from '../../components/layouts/CaptchaInput.vue';
+// 绑定用户输入
+const emailInput = ref('');
+const phoneInput = ref('');
 
+// 验证码实例ref（用于手动调用方法）
+const emailCaptcha = ref(null);
+const phoneCaptcha = ref(null);
 
-
-
-
-
-
-
-
-
+// // 登录验证码-验证成功
+// const handleLoginVerifySuccess = (correctVal) => {
+//   console.log('登录验证码验证成功：', correctVal);
+//   // 执行登录逻辑...
+// };
+//
+// // 登录验证码-验证失败
+// const handleLoginVerifyFail = (inputVal) => {
+//   console.log('登录验证码验证失败，输入值：', inputVal);
+// };
+//
+// // 登录验证码-刷新
+// const handleLoginCaptchaRefresh = (newVal) => {
+//   console.log('登录验证码已刷新，新验证码：', newVal);
+// };
+// // 注册验证码-验证成功
+// const handleRegisterVerifySuccess = (correctVal) => {
+//   console.log('注册验证码验证成功：', correctVal);
+//   // 执行注册逻辑...
+// };
+//
+// // 手动刷新所有验证码
+// const refreshAllCaptcha = () => {
+//   loginCaptcha.value?.refreshCaptcha();
+//   registerCaptcha.value?.refreshCaptcha();
+// };
 
 
 // 表单数据
@@ -295,14 +320,27 @@ const closePopup = (popupName) => {
 
 // 保存操作 - 修复标签保存逻辑
 const handleSave = (popupName) => {
+
+
+
   switch(popupName) {
     case 'account':
       updateUsers({username: formData.value.username, id: userInfo.value.id});
       break;
     case 'email':
+      emailCaptcha.value?.handleVerify();
+      if(!emailCaptcha.value?.isVerified) {
+        showToast('验证码错误');
+        return;
+      }
       updateUsers({email: formData.value.email, id: userInfo.value.id});
       break;
     case 'phone':
+      phoneCaptcha.value?.handleVerify();
+      if(!phoneCaptcha.value?.isVerified) {
+        showToast('验证码错误');
+        return;
+      }
       updateUsers({phone: formData.value.phone, id: userInfo.value.id});
       break;
     case 'gender':
@@ -688,30 +726,17 @@ onMounted(() => {
               type="email"
               clearable
           />
-          <van-field
-              label="验证码"
-              placeholder="请输入验证码"
-              clearable
-          >
-            <template #button>
-              <van-button size="small" type="primary">获取验证码</van-button>
-            </template>
-          </van-field>
-<!--          <div>-->
-<!--            &lt;!&ndash; 验证码容器 &ndash;&gt;-->
-<!--            <div id="captcha-container"></div>-->
 
-<!--            &lt;!&ndash; 用户输入框 &ndash;&gt;-->
-<!--            <van-field-->
-<!--                v-model="formData.captcha"-->
-<!--                label="验证码"-->
-<!--                placeholder="请输入验证码"-->
-<!--                clearable-->
-<!--            />-->
-
-<!--            &lt;!&ndash; 提交按钮 &ndash;&gt;-->
-<!--            <van-button @click="validateCaptcha">验证</van-button>-->
-<!--          </div>-->
+          <captcha-input
+              ref="emailCaptcha"
+              :length="4"
+              :width="200"
+              :height="80"
+              placeholder="输入验证码"
+              v-model="emailInput"
+              :hide-refresh-btn="true"
+              :hide-verify-btn="true"
+          />
         </div>
         <div class="popup-buttons">
           <van-button round type="default" @click="closePopup('email')" style="margin-right: 10px;">取消</van-button>
@@ -738,15 +763,25 @@ onMounted(() => {
               type="tel"
               clearable
           />
-          <van-field
-              label="验证码"
-              placeholder="请输入验证码"
-              clearable
-          >
-            <template #button>
-              <van-button size="small" type="primary">获取验证码</van-button>
-            </template>
-          </van-field>
+<!--          <van-field-->
+<!--              label="验证码"-->
+<!--              placeholder="请输入验证码"-->
+<!--              clearable-->
+<!--          >-->
+<!--            <template #button>-->
+<!--              <van-button size="small" type="primary">获取验证码</van-button>-->
+<!--            </template>-->
+<!--          </van-field>-->
+          <captcha-input
+              ref="phoneCaptcha"
+              :length="4"
+              :width="200"
+              :height="80"
+              placeholder="输入验证码"
+              v-model="phoneInput"
+              :hide-refresh-btn="true"
+              :hide-verify-btn="true"
+          />
         </div>
         <div class="popup-buttons">
           <van-button round type="default" @click="closePopup('phone')" style="margin-right: 10px;">取消</van-button>

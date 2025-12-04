@@ -21,14 +21,18 @@
           @keyup.enter="handleVerify"
           :style="inputStyle"
       />
+      <!-- 🔴 新增：刷新按钮显隐控制 -->
       <button
+          v-show="!hideRefreshBtn"
           class="captcha-btn captcha-refresh-btn"
           @click="refreshCaptcha"
           :style="refreshBtnStyle"
       >
         {{ refreshText }}
       </button>
+      <!-- 🔴 新增：验证按钮显隐控制 -->
       <button
+          v-show="!hideVerifyBtn"
           class="captcha-btn captcha-verify-btn"
           @click="handleVerify"
           :style="verifyBtnStyle"
@@ -103,6 +107,16 @@ const props = defineProps({
     type: Number,
     default: 1000,
   },
+
+  hideVerifyBtn: {
+    type: Boolean,
+    default: false,
+  },
+  // 隐藏刷新按钮
+  hideRefreshBtn: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 // 2. 定义Emit：向父组件传递事件
@@ -118,6 +132,7 @@ const captchaCanvas = ref(null); // canvas ref
 const userInput = ref(props.modelValue); // 用户输入
 const currentCaptcha = ref(''); // 当前正确验证码
 const resultText = ref(''); // 验证结果提示
+const isVerified = ref(false); // 是否验证成功
 const ctx = ref(null); // canvas 上下文
 
 // 4. 计算属性：样式整合（支持父组件自定义）
@@ -231,7 +246,8 @@ const refreshCaptcha = () => {
   userInput.value = '';
   resultText.value = '';
   emit('refresh', currentCaptcha.value); // 通知父组件刷新
-  emit('update:modelValue', ''); // 同步v-model
+  emit('update:modelValue', ''); // 同步v-model到父组件
+  isVerified.value = false; // 重置验证状态
 };
 
 // 8. 公开方法：验证验证码
@@ -247,6 +263,7 @@ const handleVerify = () => {
   if (inputVal === correctVal) {
     resultText.value = '验证成功';
     emit('verify-success', currentCaptcha.value); // 通知父组件验证成功
+    isVerified.value = true; // 设置验证状态为成功
   } else {
     resultText.value = '验证失败';
     emit('verify-fail', inputVal); // 通知父组件验证失败
@@ -284,6 +301,7 @@ defineExpose({
   refreshCaptcha,
   handleVerify,
   getCurrentCaptcha: () => currentCaptcha.value, // 获取当前正确验证码（谨慎使用）
+  isVerified, // 暴露验证状态
 });
 </script>
 
