@@ -850,15 +850,6 @@ onMounted(async () => {
                   upload-text="从相册选择"
                   @delete="handleImageDelete"
               >
-                <!-- 预览已选中的图片 -->
-<!--                <template #preview="{ file }">-->
-<!--                  <van-image-->
-<!--                      round-->
-<!--                      size="80"-->
-<!--                      :src="editImageFileList[0]?.url || editingTeam?.avatarUrl"-->
-<!--                      class="avatar-imgs"-->
-<!--                  />-->
-<!--                </template>-->
                 <VanImage
                     round
                     size="80"
@@ -866,8 +857,6 @@ onMounted(async () => {
                     class="avatar-imgs"
                 />
               </van-uploader>
-
-
             </div>
             <van-field
                 v-model="editingTeam.name"

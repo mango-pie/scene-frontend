@@ -20,6 +20,20 @@ const showChangePasswordPopup = ref(false);
 const showChangeAvatarPopup = ref(false);
 const showEditTagsPopup = ref(false);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // 表单数据
 const formData = ref({
   account: '',
@@ -31,7 +45,9 @@ const formData = ref({
   oldPassword: '',
   newPassword: '',
   confirmPassword: '',
-  tags: [] // 初始化标签数组
+  tags: [] ,// 初始化标签数组
+
+  captcha: ''
 });
 
 
@@ -493,6 +509,11 @@ onMounted(() => {
   fetchUserInfo();
   // 预先加载标签数据
   searchExistingTags();
+  // captchaInstance = new ImageCaptcha({
+  //   container: '#captcha-container',
+  //   width: 100,
+  //   height: 36
+  // });
 });
 </script>
 
@@ -676,6 +697,21 @@ onMounted(() => {
               <van-button size="small" type="primary">获取验证码</van-button>
             </template>
           </van-field>
+<!--          <div>-->
+<!--            &lt;!&ndash; 验证码容器 &ndash;&gt;-->
+<!--            <div id="captcha-container"></div>-->
+
+<!--            &lt;!&ndash; 用户输入框 &ndash;&gt;-->
+<!--            <van-field-->
+<!--                v-model="formData.captcha"-->
+<!--                label="验证码"-->
+<!--                placeholder="请输入验证码"-->
+<!--                clearable-->
+<!--            />-->
+
+<!--            &lt;!&ndash; 提交按钮 &ndash;&gt;-->
+<!--            <van-button @click="validateCaptcha">验证</van-button>-->
+<!--          </div>-->
         </div>
         <div class="popup-buttons">
           <van-button round type="default" @click="closePopup('email')" style="margin-right: 10px;">取消</van-button>
@@ -947,7 +983,10 @@ onMounted(() => {
   border-radius: 8px;
   margin-top: 8px;
 }
-
+.captcha-container {
+  width: 240px;
+  margin: 20px;
+}
 /* 调整上传组件与其他表单元素的间距 */
 :deep(.van-uploader) {
   margin-top: 8px;
