@@ -126,8 +126,8 @@ const handleRegister = async () => {
       userPassword: formData.userPassword,
       checkPassword: formData.checkPassword
     })
-
-    if (result) {
+    console.log('注册结果:', result);
+    if (result!==-1) {
       showSuccessToast('注册成功！')
       // 注册成功后跳转到登录页面
       setTimeout(() => {

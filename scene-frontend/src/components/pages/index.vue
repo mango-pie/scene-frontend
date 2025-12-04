@@ -13,18 +13,20 @@ const error = ref('');
 const pageNum = ref(1);
 const totalPages = ref(0);
 const pageSize = ref(5);
-const currentUserId = ref(2); // 默认用户ID
+const currentUserId = ref(); // 默认用户ID
 
 // 加载推荐用户
 const loadRecommendations = async () => {
   loading.value = true;
   error.value = '';
   try {
-    getCurrentUser().then(user => {
-      currentUserId.value = user.id;
-    });
+    const response = await getCurrentUser();
+    console.log('当前用户:', response);
+    currentUserId.value = response.id;
     const userId = currentUserId.value;
+    console.log('当前用户ID:', userId);
     const users = await recommendUsersByUserId(userId, pageNum.value, pageSize.value);
+    console.log('推荐用户s:', users.pages);
     totalPages.value = users.pages;
     console.log('推荐用户:', users);
     recommendedUsers.value = users.records;
